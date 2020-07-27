@@ -11,3 +11,9 @@ gcc main.c -o firstOpenGlApp_c -lglut -lGLU -lGL
 - Start menu
 - Ball vector
 - Input abstraction (depends on OpenGL)
+- Move to C++
+
+### Ideas:
+- Project singers on the ball and add soundtrack!
+- Lyrics should appear on the screen
+- "No Stars" by Del Rio, with stars flashing
