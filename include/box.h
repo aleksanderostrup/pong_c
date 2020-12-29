@@ -11,10 +11,10 @@ class Box : public Object
     Box(glm::vec3 position, glm::vec3 scale, Shader* shader, const char* name, float mass=1.0f);
     ~Box();
 
-    void drawInit();
-    void draw();
-    void UpdateBoundBox();
-
+    void  drawInit();
+    void  draw();
+    void  UpdateBoundBox();
+    float containingRadius();
 
   private:
     Shader* mShader;

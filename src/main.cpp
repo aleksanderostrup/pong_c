@@ -11,14 +11,16 @@
 #include "../include/model.h"
 #include "../include/cube.h"
 #include "../include/plane.h"
-#include "../include/scene.h" // consider renaming! Assimp lib also has a scene.h file!
+#include "../include/scene.h"
+#include "../include/inputprocess.h"
+#include "../include/glfw_setup.h"
 
 #include <iostream>
 #include <vector>
 
 /*
 todo:
-    - GITHUB!
+    - arrow object to attach to other objects to debug vectors :D
     - threading
         * have an input thread running or just wrap in class and poll?
     - audio from https://openal.org/  [openGL like API with 3D sound]
@@ -35,17 +37,19 @@ todo:
         * join with the openal implementation
     - object highlighting and selecting (with lookAt)
     - skybox 
+    - themes (including Dan theme)
     - go through comments and fix stuff
     - instant test scenatios
     - command line input
     - track object with a (user-defined?) depth so we can back track once on collision (for a simple start)
       and go back in time a few frames to inspect collisions
+    - rotation in 3 degrees
+    - check functions and set pass by reference where apt
+    - slow motion (via dt)
+    - consider renaming scene.h / camera.h (others?), since assimp has same named header files!
+    - add this amazing resource to the docs: https://www.geometrictools.com/Documentation/Documentation.html
 */
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
 unsigned int loadTexture(const char *path);
 
 // settings
@@ -54,43 +58,16 @@ const unsigned int SCR_HEIGHT = 600;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-float lastX = (float)SCR_WIDTH / 2.0;
-float lastY = (float)SCR_HEIGHT / 2.0;
-bool firstMouse = true;
 
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-bool isPaused = false;
-
 vector<Object*> dbgObj;
 
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    GLFWwindow* window = glfw_init(&camera);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -106,16 +83,23 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // create instance of input processing
+    InputProcess inputProcess(window, &camera);
+
     // build and compile shaders
     // -------------------------
-    //Shader shader("3.2.blending.vs", "3.2.blending.fs");
     Shader shader("../shaders/shader.vs", "../shaders/shader.fs");
 
     
     // create a scene
     Scene scene(0.01);
     Cube cube1(glm::vec3( 0.0f, 0.0f,  0.0f), 1.0f, &shader, "cube1", 50000.0f);
-    Cube cube2(glm::vec3( 2.0f, 0.0f,  0.0f), 1.0f, &shader, "cube2");
+    Box cube2(glm::vec3( 3.0f, 0.0f,  0.0f), glm::vec3( 2.0f, 1.0f,  1.0f), &shader, "cube2");
+    Cube cube12(glm::vec3( 0.0f, 0.0f,  -4.0f), 1.0f, &shader, "cube12", 50000.0f);
+    Box cube22(glm::vec3( 3.0f, 0.0f,  -4.0f), glm::vec3( 2.0f, 1.0f,  1.0f), &shader, "cube22");
+    // Cube cube2(glm::vec3( 2.0f, 0.0f,  0.0f), 1.0f, &shader, "cube2");
+    Cube cube10(glm::vec3( 0.0f, 0.0f,  -3.5f), 1.0f, &shader, "cube10", 50000.0f);
+    Box box20(glm::vec3( 3.0f, 0.0f,  -3.5f), glm::vec3( 1.0f, 1.0f,  1.0f), &shader, "box20");
     Cube cube3(glm::vec3( 9.0f, 0.0f, -1.0f), 1.0f, &shader, "cube3");
     Cube cube4(glm::vec3(-1.0f, 0.0f, -5.0f), 1.0f, &shader, "cube4");
     Cube cube5(glm::vec3( 2.0f, 0.0f, -5.0f), 1.0f, &shader, "cube5");
@@ -133,15 +117,24 @@ int main()
     // cube1.setRotationVelocity(0.1);
     // cube2.setRotationVelocity(0.1);
     // cube1.setScale(glm::vec3(2.0f, 1.0f, 2.0f)); // showing that that the 'horizontal' plane is actually the xz-plane! 
-    // cube1.setRotation(3.141 / 7);
+    cube1.setRotation(glm::vec3( 0.0f, 1.0f, 1.0f), 3.141 / 4);
     cube2.setVelocity(glm::vec3(-0.3f, 0.0f, 0.0f));
-    plane1.setRotationVelocity(1.1);
-    plane1.setRotation(3.141 / 2);
-    plane2.setRotationVelocity(1.1);
+    // cube12.setRotation(glm::vec3( 0.0f, 0.0f, 1.0f), 3.141 / 4);
+    cube22.setVelocity(glm::vec3(-0.3f, 0.0f, 0.0f));
+    // cube10.setRotation(glm::vec3( 0.0f, 1.0f, 1.0f), 1.32 * 3.14 / 4);
+    // box20.setRotation(-glm::vec3( 0.0f, 1.0f, 1.0f),  1.32 * 3.14 / 4);
+    // box20.setVelocity(glm::vec3(-0.3f, 0.0f, 0.0f));
+    // plane1.setRotationVelocity(glm::vec3(0.0f, 1.0f, 0.0f));
+    // plane1.setRotation(glm::vec3(0.0f, 1.0f, 0.0f));
+    // plane2.setRotationVelocity(glm::vec3(0.0f, 1.0f, 0.0f));
     // scene.addObject(&plane1);
     // scene.addObject(&plane2);
     scene.addObject(&cube1);
     scene.addObject(&cube2);
+    scene.addObject(&cube12);
+    scene.addObject(&cube22);
+    // scene.addObject(&cube10);
+    // scene.addObject(&box20);
     // scene.addObject(&cube3);
     // scene.addObject(&cube4);
     // scene.addObject(&cube5);
@@ -204,7 +197,15 @@ int main()
 
         // input
         // -----
-        processInput(window);
+        inputProcess.processAllInput(deltaTime);
+
+        if (inputProcess.keyActions.printDebug)
+        {
+            for (auto& v : dbgObj)
+            {
+                v->printObject();
+            }
+        }
 
         // sort the transparent windows before rendering
         // ---------------------------------------------
@@ -229,7 +230,7 @@ int main()
         
         // all objects are moved, drawn here
         // also, collisions are detected and calculated
-        scene.updateScene(deltaTime, isPaused);
+        scene.updateScene(deltaTime, inputProcess.keyActions.pause);
         
         // windows (from furthest to nearest)
         glBindVertexArray(transparentVAO);
@@ -253,88 +254,6 @@ int main()
     return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
-    static bool pauseKeyPressed = false;
-    static bool printDbgKeyPressed = false;
-
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
-    {
-        if (!pauseKeyPressed) 
-        {
-            pauseKeyPressed = true;
-            isPaused = !isPaused; // toggle pause
-        }
-    }
-    else 
-    {
-        pauseKeyPressed = false;
-    }
-    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) 
-    {
-        if (!printDbgKeyPressed) 
-        {
-            printDbgKeyPressed = true;
-            for (auto& v : dbgObj)
-            {
-                v->printObject();
-            }
-        }
-    }
-    else 
-    {
-        printDbgKeyPressed = false;
-    }
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    camera.ProcessMouseScroll(yoffset);
-}
 
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------

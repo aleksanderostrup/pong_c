@@ -9,20 +9,33 @@ link_directories(
     /home/alek/eclipse-workspace/pong_3d/shared
 )
 
+add_library(external_dependencies
+    std_image.cpp
+)
+
 add_executable(pong3d 
     glad.c
     box.cpp
     cube.cpp
     plane.cpp
-    std_image.cpp
-    main.cpp)
+    main.cpp
+    inputprocess.cpp
+    glfw_setup.cpp
+)
 
 target_include_directories(pong3d
     PUBLIC ../include/
     PUBLIC ../include/assimp/
+    PUBLIC /usr/include/
+    PUBLIC /usr/include/
+)
+
+target_include_directories(external_dependencies
     PUBLIC ../include/glm/
-    PUBLIC /usr/include/
-    PUBLIC /usr/include/
+)
+
+target_compile_options(pong3d
+    PRIVATE "-Wall"    
 )
 
 target_link_libraries(pong3d
@@ -34,6 +47,7 @@ target_link_libraries(pong3d
     assimp
     pthread
     Xrandr
+    external_dependencies
 )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

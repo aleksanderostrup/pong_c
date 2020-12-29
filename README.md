@@ -1,17 +1,16 @@
 # pong_c
-Implementation of pong in c based on OpenGL
+Implementation of pong in c++.
+Graphics -> OpenGL.
+Physics  -> rolled my own.
+
 
 ### How to build:
-gcc main.c -o firstOpenGlApp_c -lglut -lGLU -lGL
+cmake
 
 ### TODO: 
-- Build with make or get IDE
 - Block diagram
-- GUI interface with possibility for ASCII or OpenGL
 - Start menu
 - Ball vector
-- Input abstraction (depends on OpenGL)
-- Move to C++
 
 ### Ideas:
 - Project singers on the ball and add soundtrack!

@@ -10,6 +10,14 @@
 #include <string>
 #include <regex>
 
+// static float debugFunc(glm::vec3 L, glm::vec3 A0, glm::vec3 A1, glm::vec3 A2, glm::vec3 extent)
+// {
+//   float   R0 =  extent.x * (glm::dot(L, A0));
+//           R0 += extent.y * (glm::dot(L, A1));
+//           R0 += extent.z * (glm::dot(L, A2));
+//   return  R0;
+// }
+
 typedef struct
 {
   glm::vec3 top11;
@@ -38,8 +46,9 @@ class Object
       mPosition          (position),
       mScale             (scale),
       mInertiaTensor     (glm::mat3(1.0f)), // good for cubes, but must be overwritten for other objects
-      mRotationVelocity  (0.0f),
-      mRotation          (0.0f),
+      mRotationVelocity  (glm::vec3(0.0f, 0.0f, 0.0f)),
+      mRotation          (glm::vec3(0.0f, 1.0f, 0.0f)),
+      mRotationMag       (0.0f),
       mMass              (mass),
       mDebugOutputOn     (false),
       mIgnoreCollision   (false),
@@ -55,8 +64,9 @@ class Object
     glm::vec3       mScale;
     glm::mat4       mModel;
     glm::mat3       mInertiaTensor;
-    float           mRotationVelocity;
-    float           mRotation;
+    glm::vec3       mRotationVelocity;
+    glm::vec3       mRotation;
+    float           mRotationMag;
     const float     mMass;
     bool            mDebugOutputOn;
     bool            mIgnoreCollision;
@@ -108,6 +118,7 @@ class Object
     // pure abstracts
     virtual void draw() = 0;
     virtual void drawInit() = 0;
+    virtual float containingRadius() = 0;
 
     void checkForErrors()
     {
@@ -182,16 +193,16 @@ class Object
         boundBoxStr += "Az: " + glm::to_string(mBoundBoxEdges->Az) + "\n";
       }
 
-      std::cout << "name: "             <<  this->mName                      << "\n"
-                << "position: "         <<  glm::to_string(this->mPosition)  << "\n"
-                << "scale: "            <<  glm::to_string(this->mScale)     << "\n"
-                << "velocity: "         <<  glm::to_string(this->mVelocity)  << "\n"
-                << "rotation: "         <<  this->mRotation                  << "\n"
-                << "rotationVelocity: " <<  this->mRotationVelocity          << "\n"
-                << "mass: "             <<  this->mMass                      << "\n"
-                << "model: "            <<  modelFormatted                   << "\n"
-                << "debugOutputOn: "    <<  this->mDebugOutputOn             << "\n"
-                << "boundbox: "         <<  boundBoxStr                      << "\n"
+      std::cout << "name: "             <<  this->mName                             << "\n"
+                << "position: "         <<  glm::to_string(this->mPosition)         << "\n"
+                << "scale: "            <<  glm::to_string(this->mScale)            << "\n"
+                << "velocity: "         <<  glm::to_string(this->mVelocity)         << "\n"
+                << "rotation: "         <<  glm::to_string(this->mRotation)         << "\n"
+                << "rotationVelocity: " <<  glm::to_string(this->mRotationVelocity) << "\n"
+                << "mass: "             <<  this->mMass                             << "\n"
+                << "model: "            <<  modelFormatted                          << "\n"
+                << "debugOutputOn: "    <<  this->mDebugOutputOn                    << "\n"
+                << "boundbox: "         <<  boundBoxStr                             << "\n"
                 << std::endl;
     }
 
@@ -200,7 +211,15 @@ class Object
       mModel = glm::mat4(1.0f);
       mModel = glm::translate(mModel, mPosition);
       mModel = glm::scale(mModel, mScale);
-      mModel = glm::rotate(mModel, mRotation, glm::vec3(0.0f, 1.0f, 0.0f));
+      if (mRotationMag) // check that we do not spin around 0 length vector
+      {
+        mModel = glm::rotate(mModel, mRotationMag, glm::normalize(mRotation));
+      }
+      else
+      {
+        // mModel = glm::rotate(mModel, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+      }
+      
     }
 
     void updatePosition(float dt)
@@ -216,29 +235,29 @@ class Object
     void updateRotation(float dt)
     {
       mRotation += mRotationVelocity * dt;
-      if (this->mDebugOutputOn)
-      {
-        std::cout << mRotation << std::endl;
-      }
       this->updateModel();
     }
 
-    void setVelocity(glm::vec3 velocity)
+    void setVelocity(const glm::vec3& velocity)
     {
       this->mVelocity = velocity;
     }
 
-    void setRotation(float rotation)
+    // sets a fixed rotation, does not set or rotation velocity
+    // rotation is a vector about which to rotate, and the magnitue the 
+    // radians to rotate. Set as 0 length vector to set as non-rotated.
+    void setRotation(const glm::vec3& rotation, float rotMag)
     {
-      this->mRotation = rotation;
+      this->mRotation     = rotation;
+      this->mRotationMag  = rotMag; //glm::length(this->mRotation);
     }
 
-    void setScale(glm::vec3 scale)
+    void setScale(const glm::vec3& scale)
     {
       this->mScale = scale;
     }
 
-    void setRotationVelocity(float rotationVelocity)
+    void setRotationVelocity(const glm::vec3& rotationVelocity)
     {
       this->mRotationVelocity = rotationVelocity;
     }
@@ -301,13 +320,25 @@ class Object
     {
       Object* A = this; // alias to help with the naming
       Object* B = obj;  // alias to help with the naming
-
-      // check that BoundBox is not null here
-      A->UpdateBoundBox();
-      B->UpdateBoundBox();
+      
+      // skip test if spheres not overlapping
+      float minR = A->containingRadius() + B->containingRadius();
+      minR *= minR; // square
       glm::vec3 C0 = A->mPosition; // center of A
       glm::vec3 C1 = B->mPosition; // center of B
       glm::vec3 D  = C1 - C0; // [DCD p. 6]
+      float actualR = glm::dot(D, D); // by convention we do not divide by 4 in these calcs to speed up computation
+      std::cout << "ABdist = " << glm::to_string(D) << " len = " << actualR << " minR = " << minR << std::endl;
+      if (actualR > minR) 
+      {
+        std::cout << "Skipping test!" << std::endl;
+        return false;
+      }
+
+      const size_t noOfTests = 15;
+      // check that BoundBox is not null here
+      A->UpdateBoundBox();
+      B->UpdateBoundBox();
       
       // generate the 15 axis [DCD Table 1, p. 7]
       // OPTIMIZE: later on, start with the easy ones (non-cross products)
@@ -322,9 +353,9 @@ class Object
       L[i++] = B->mBoundBoxEdges->Ay;
       L[i++] = B->mBoundBoxEdges->Az;
       const size_t noOfDims = 3; // also offset in L[] to get to the corresponding axis in the B object
-      for (int n = 0; n < noOfDims; n++)
+      for (size_t n = 0; n < noOfDims; n++)
       {
-        for (int m = 0; m < noOfDims; m++)
+        for (size_t m = 0; m < noOfDims; m++)
         {
           L[i++] = glm::cross(L[n], L[m + noOfDims]);
         }
@@ -337,69 +368,79 @@ class Object
       glm::mat3 BEdges = glm::mat3(L[3], L[4], L[5]);
       // matrix access is [col][row]
       glm::mat3 C_ij = glm::transpose(AEdges) * BEdges;
+      glm::mat3 C_ij_abs(1.0f);
 
       // OPTIMIZE: this should be done on the dot product instead!
       for (size_t n = 0; n < noOfDims; n++)
       {
-          C_ij[n][0] = glm::abs(C_ij[n][0]);
-          C_ij[n][1] = glm::abs(C_ij[n][1]);
-          C_ij[n][2] = glm::abs(C_ij[n][2]);
+        C_ij_abs[n][0] = glm::abs(C_ij[n][0]);
+        C_ij_abs[n][1] = glm::abs(C_ij[n][1]);
+        C_ij_abs[n][2] = glm::abs(C_ij[n][2]);
       }
 
       // a_i and b_i is the length of the edges
       glm::vec3 a_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
       glm::vec3 b_i = 0.5f * B->mScale;
-      float R0[15];
-      float R1[15];
-      float R[15];
+      float R0[noOfTests];
+      float R1[noOfTests];
+      float R[noOfTests];
 
-      R0[0] = a_i.x;
-      R0[1] = a_i.y;
-      R0[2] = a_i.z;
-      R0[3] = a_i.x * C_ij[0][0] + a_i.y * C_ij[1][0] + a_i.z * C_ij[2][0];
-      R0[4] = a_i.x * C_ij[1][0] + a_i.y * C_ij[1][1] + a_i.z * C_ij[2][1];
-      R0[5] = a_i.x * C_ij[2][0] + a_i.y * C_ij[1][2] + a_i.z * C_ij[2][2];
+      // note that col / row order is switched for glm lib compared to ref [DCD].
+      R0[0]  = a_i.x;
+      R0[1]  = a_i.y;
+      R0[2]  = a_i.z;
+      R0[3]  = a_i.x * C_ij_abs[0][0] + a_i.y * C_ij_abs[0][1] + a_i.z * C_ij_abs[0][2];
+      R0[4]  = a_i.x * C_ij_abs[1][0] + a_i.y * C_ij_abs[1][1] + a_i.z * C_ij_abs[1][2];
+      R0[5]  = a_i.x * C_ij_abs[2][0] + a_i.y * C_ij_abs[2][1] + a_i.z * C_ij_abs[2][2];
+      R0[6]  = a_i.y * C_ij_abs[0][2] + a_i.z * C_ij_abs[0][1];
+      R0[7]  = a_i.y * C_ij_abs[1][2] + a_i.z * C_ij_abs[1][1];
+      R0[8]  = a_i.y * C_ij_abs[2][2] + a_i.z * C_ij_abs[2][1];
+      R0[9]  = a_i.x * C_ij_abs[0][2] + a_i.z * C_ij_abs[0][0];
+      R0[10] = a_i.x * C_ij_abs[1][2] + a_i.z * C_ij_abs[1][0];
+      R0[11] = a_i.x * C_ij_abs[2][2] + a_i.z * C_ij_abs[2][0];
+      R0[12] = a_i.x * C_ij_abs[0][1] + a_i.y * C_ij_abs[0][0];
+      R0[13] = a_i.x * C_ij_abs[1][1] + a_i.y * C_ij_abs[1][0];
+      R0[14] = a_i.x * C_ij_abs[2][1] + a_i.y * C_ij_abs[2][0];
 
-      R1[0] = b_i.x * C_ij[0][0] + b_i.y * C_ij[1][0] + b_i.z * C_ij[2][0];
-      R1[1] = b_i.x * C_ij[1][0] + b_i.y * C_ij[1][1] + b_i.z * C_ij[2][1];
-      R1[2] = b_i.x * C_ij[2][0] + b_i.y * C_ij[1][2] + b_i.z * C_ij[2][2];
-      R1[3] = b_i.x;
-      R1[4] = b_i.y;
-      R1[5] = b_i.z;
+
+      R1[0]  = b_i.x * C_ij_abs[0][0] + b_i.y * C_ij_abs[1][0] + b_i.z * C_ij_abs[2][0];
+      R1[1]  = b_i.x * C_ij_abs[0][1] + b_i.y * C_ij_abs[1][1] + b_i.z * C_ij_abs[2][1];
+      R1[2]  = b_i.x * C_ij_abs[0][2] + b_i.y * C_ij_abs[1][2] + b_i.z * C_ij_abs[2][2];
+      R1[3]  = b_i.x;
+      R1[4]  = b_i.y;
+      R1[5]  = b_i.z;
+      R1[6]  = b_i.y * C_ij_abs[2][0] + b_i.z * C_ij_abs[1][0];
+      R1[7]  = b_i.x * C_ij_abs[2][0] + b_i.z * C_ij_abs[0][0];
+      R1[8]  = b_i.x * C_ij_abs[1][0] + b_i.y * C_ij_abs[0][0];
+      R1[9]  = b_i.y * C_ij_abs[2][1] + b_i.z * C_ij_abs[1][1];
+      R1[10] = b_i.x * C_ij_abs[2][1] + b_i.z * C_ij_abs[0][1];
+      R1[11] = b_i.x * C_ij_abs[1][1] + b_i.y * C_ij_abs[0][1];
+      R1[12] = b_i.y * C_ij_abs[2][2] + b_i.z * C_ij_abs[1][2];
+      R1[13] = b_i.x * C_ij_abs[2][2] + b_i.z * C_ij_abs[0][2];
+      R1[14] = b_i.x * C_ij_abs[1][2] + b_i.y * C_ij_abs[0][2];
 
       // OPTIMIZE:
       // all the dot product can be calculated separately and be reused in later calculations
       // then the abs can be taken when needed
-      R[0]  = glm::abs(glm::dot(L[0], D));
-      R[1]  = glm::abs(glm::dot(L[1], D));
-      R[2]  = glm::abs(glm::dot(L[2], D));
-      R[3]  = glm::abs(glm::dot(L[3], D));
-      R[4]  = glm::abs(glm::dot(L[4], D));
-      R[5]  = glm::abs(glm::dot(L[5], D));
-
-      // debug output
-      std::cout <<  R0[0] << "\n"
-                <<  R0[1] << "\n"
-                <<  R0[2] << "\n"
-                <<  R0[3] << "\n"
-                <<  R0[4] << "\n"
-                <<  R0[5] << "\n"
-                <<  R1[0] << "\n"
-                <<  R1[1] << "\n"
-                <<  R1[2] << "\n"
-                <<  R1[3] << "\n"
-                <<  R1[4] << "\n"
-                <<  R1[5] << "\n"
-                <<  R[0]  << "\n"
-                <<  R[1]  << "\n"
-                <<  R[2]  << "\n"
-                <<  R[3]  << "\n"
-                <<  R[4]  << "\n"
-                <<  R[5]  << std::endl;
+      R[0]   = glm::abs(glm::dot(L[0], D));
+      R[1]   = glm::abs(glm::dot(L[1], D));
+      R[2]   = glm::abs(glm::dot(L[2], D));
+      R[3]   = glm::abs(glm::dot(L[3], D));
+      R[4]   = glm::abs(glm::dot(L[4], D));
+      R[5]   = glm::abs(glm::dot(L[5], D));
+      R[6]   = glm::abs((C_ij[0][1] * glm::dot(L[2], D)) - (C_ij[0][2] * glm::dot(L[1], D)));
+      R[7]   = glm::abs((C_ij[1][1] * glm::dot(L[2], D)) - (C_ij[1][2] * glm::dot(L[1], D)));
+      R[8]   = glm::abs((C_ij[2][1] * glm::dot(L[2], D)) - (C_ij[2][2] * glm::dot(L[1], D)));
+      R[9]   = glm::abs((C_ij[0][2] * glm::dot(L[0], D)) - (C_ij[0][0] * glm::dot(L[2], D)));
+      R[10]  = glm::abs((C_ij[1][2] * glm::dot(L[0], D)) - (C_ij[1][0] * glm::dot(L[2], D)));
+      R[11]  = glm::abs((C_ij[2][2] * glm::dot(L[0], D)) - (C_ij[2][0] * glm::dot(L[2], D)));
+      R[12]  = glm::abs((C_ij[0][0] * glm::dot(L[1], D)) - (C_ij[0][1] * glm::dot(L[0], D)));
+      R[13]  = glm::abs((C_ij[1][0] * glm::dot(L[1], D)) - (C_ij[1][1] * glm::dot(L[0], D)));
+      R[14]  = glm::abs((C_ij[2][0] * glm::dot(L[1], D)) - (C_ij[2][1] * glm::dot(L[0], D)));
 
       // OPTIMIZE: if any of the unit vectors of the 2 objects are aligned
       //           we do not need to check those axes again!
-      for (size_t n = 0; n < 6; n++)
+      for (size_t n = 0; n < noOfTests; n++)
       {
         // std::cout << "n:  " << n     << "\n"
         //           << "R:  " << R[n]  << "\n"
@@ -408,14 +449,26 @@ class Object
 
         if (R[n] > (R0[n] + R1[n]))
         {
-          std::cout << "NOOOOOO Collision!!!!" << std::endl;
+          // debug output
+          std::cout.precision(3);
+          std::cout << "Testing for " << A->mName << "(=A) vs. " << B->mName << "(=B)" << std::endl;
+          std::cout <<  "R0\tR1\tR\tR0+R1: n=" << n << "\n" 
+                    <<  R0[n]  << "\t" << R1[n]  << "\t" << R[n] << "\t" << R0[n] + R1[n] << "\n"
+                    <<  "C0 "  << glm::to_string(C0) << "\n"
+                    <<  "C1 "  << glm::to_string(C1) << "\n"
+                    <<  "D "   << glm::to_string(D)  << "\n"
+                    <<  "a_i "   << glm::to_string(a_i)  << "\n"
+                    <<  "b_i "   << glm::to_string(b_i)  << "\n"
+                    <<  "C_ij "   << glm::to_string(C_ij)  << "\n"
+                    // <<  "Alt R0: " << debugFunc(L[n], L[0], L[1], L[2], a_i) << "\n"
+                    <<  "Projected axis: " << glm::to_string(L[n]) << "\n" << std::endl;
           return false;
         }
       }
       std::cout << "Collision!!!!" << std::endl;
 
       
-      return false;
+      return true;
     }
 
 
@@ -493,8 +546,8 @@ class Object
       // we should remember where the objects were in the previous frame and move them back there
       // as a simple first approximation
       std::cout << "Moving object a bit away from each other! This should be handled in another way\n" << std::endl;
-      this->updatePosition(0.02);
-      obj->updatePosition(0.02);
+      this->updatePosition(0.03);
+      obj->updatePosition(0.03);
     }
 
     private:

@@ -141,7 +141,8 @@ void Box::UpdateBoundBox()
     return;
   }
   // get upper 3x3 matrix (Rotation matrix) from the model matrix
-  glm::mat3 rotM  = glm::mat3(mModel);
+  //glm::mat3 rotM  = glm::mat3(mModel);
+  glm::mat3 rotM = glm::mat3(glm::rotate(glm::mat4(1.0f), mRotationMag, mRotation));
   // rotate all the points with the current rotation matrix 
   // and translate around object center
   mBoundBox->top11 = (rotM * mBoundBoxNonRotated->top11) + mPosition;
@@ -156,10 +157,22 @@ void Box::UpdateBoundBox()
   mBoundBoxEdges->Ax = mBoundBox->bot12 - mBoundBox->bot11;
   mBoundBoxEdges->Ay = mBoundBox->top11 - mBoundBox->bot11;
   mBoundBoxEdges->Az = mBoundBox->bot14 - mBoundBox->bot11;
+  // std::cout << "Rot for " << mName << "(x): " << glm::to_string(rotM) << std::endl;
   // they have to be unit vectors
   mBoundBoxEdges->Ax = glm::normalize(mBoundBoxEdges->Ax);
   mBoundBoxEdges->Ay = glm::normalize(mBoundBoxEdges->Ay);
   mBoundBoxEdges->Az = glm::normalize(mBoundBoxEdges->Az);
+  // std::cout << "Ax for " << mName << glm::to_string(mBoundBoxEdges->Ax) << std::endl;
+  // std::cout << "Ay for " << mName << glm::to_string(mBoundBoxEdges->Ay) << std::endl;
+  // std::cout << "Az for " << mName << glm::to_string(mBoundBoxEdges->Az) << "\n" << std::endl;
+
 }
 
 
+float Box::containingRadius()
+{
+  // sides from center are 1/2. Using Pyth. Theorem, and squaring we get:
+  // (a/2)^2 + (b/2)^2 + (c/2)^2 = (a^2 + b^2 + c^2) / 4 = r^2
+  // by convention we do not divide by 4 in these calcs to speed up computation
+  return (glm::sqrt((glm::dot(mScale, mScale))) / 2);
+}

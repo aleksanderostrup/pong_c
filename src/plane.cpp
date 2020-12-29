@@ -78,8 +78,14 @@ void Plane::draw()
 
 void Plane::UpdateBoundBox()
 {
-  glm::vec3 halfSide = 0.5f * this->mScale;
+  // glm::vec3 halfSide = 0.5f * this->mScale;
   // todo: find correct way of calculating this!
   // botLeft  = mPosition - halfSide;
   // topRight = mPosition + halfSide;
+}
+
+float Plane::containingRadius()
+{
+  // determine better way to calc
+  return 50000.0f;
 }
