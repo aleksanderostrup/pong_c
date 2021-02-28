@@ -1,13 +1,10 @@
 #include "../include/glfw_setup.h"
 #include <iostream>
 
-const unsigned int SCR_WIDTH = 800; // SHOULD BE INPUT IN INIT
-const unsigned int SCR_HEIGHT = 600; // SHOULD BE INPUT IN INIT
-
 static GLFWwindow* _window = nullptr;
 static Camera*     _camera = nullptr;
-static float       _lastX = (float)SCR_WIDTH / 2.0;
-static float       _lastY = (float)SCR_HEIGHT / 2.0;
+static float       _lastX;
+static float       _lastY;
 static bool        _firstMouse = true;
 
 
@@ -47,9 +44,11 @@ static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     _camera->ProcessMouseScroll(yoffset);
 }
 
-GLFWwindow* glfw_init(Camera* camera)
+GLFWwindow* glfw_init(Camera* camera, unsigned int scr_width, unsigned int scr_height)
 {
     _camera = camera;
+    _lastX = (float)scr_width / 2.0;
+    _lastY = (float)scr_height / 2.0;
 
     // glfw: initialize and configure
     // ------------------------------
@@ -63,7 +62,7 @@ GLFWwindow* glfw_init(Camera* camera)
 
     // glfw window creation
     // --------------------
-    _window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Aleks Physics Engine", NULL, NULL);
+    _window = glfwCreateWindow(scr_width, scr_height, "Aleks Physics Engine", NULL, NULL);
     if (_window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;

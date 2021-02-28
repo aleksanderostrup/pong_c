@@ -7,6 +7,34 @@ InputProcess::InputProcess(GLFWwindow* window, Camera* camera) :
 {
 }
 
+void InputProcess::handleKeyPressedFirstTime(bool& key, bool& action, int glfwKey)
+{
+  if (glfwGetKey(mWindow, glfwKey) == GLFW_PRESS) 
+  {
+    if (!key) 
+    {
+      key = true;
+      if (action)
+      {
+        action = false;
+      }
+      else 
+      {
+        action = true;
+      }
+    }
+    else 
+    {
+      action = false;
+    }
+  }
+  else if (key)
+  {
+    key = false;
+    action = false;
+  }
+}
+
 void InputProcess::processAllInput(float deltaTime)
 {
   processKeyboardInput(deltaTime);
@@ -38,28 +66,7 @@ void InputProcess::processKeyboardInput(float deltaTime)
   {
     keysPressed.isPausePressed = false;
   }
-  if (glfwGetKey(mWindow, GLFW_KEY_P) == GLFW_PRESS) 
-  {
-    if (!keysPressed.isPrintDbgPressed) 
-    {
-      keysPressed.isPrintDbgPressed = true;
-      if (keyActions.printDebug)
-      {
-        keyActions.printDebug = false;
-      }
-      else 
-      {
-        keyActions.printDebug = true;
-      }
-    }
-    else 
-    {
-      keyActions.printDebug = false;
-    }
-  }
-  else if (keysPressed.isPrintDbgPressed)
-  {
-    keysPressed.isPrintDbgPressed = false;
-    keyActions.printDebug = false;
-  }
+  // print debug handling
+  handleKeyPressedFirstTime(keysPressed.isPrintDbgPressed, keyActions.printDebug, GLFW_KEY_P);
+  handleKeyPressedFirstTime(keysPressed.isFrameForwardPressed, keyActions.frameForward, GLFW_KEY_RIGHT);
 }

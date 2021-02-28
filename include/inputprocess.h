@@ -10,6 +10,7 @@ class InputProcess
     struct KeyboardActions {
       bool pause = false;
       bool printDebug = false;
+      bool frameForward = false;
     } keyActions;
     
     InputProcess(GLFWwindow* window, Camera* camera);
@@ -18,7 +19,8 @@ class InputProcess
     void processAllInput(float deltaTime);
 
   private:
-    void processKeyboardInput(float deltaTime);
+    void processKeyboardInput       (float deltaTime);
+    void handleKeyPressedFirstTime  (bool& key, bool& action, int glfwKey);
 
     GLFWwindow* mWindow;
     Camera*     mCamera;
@@ -27,5 +29,6 @@ class InputProcess
     struct KeyboardPressed {
       bool isPausePressed = false;
       bool isPrintDbgPressed = false;
+      bool isFrameForwardPressed = false;
     } keysPressed;
 };

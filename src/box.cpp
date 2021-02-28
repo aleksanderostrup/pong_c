@@ -11,7 +11,7 @@ Box::Box(glm::vec3 position, glm::vec3 scale, Shader* shader, const char* name, 
   this->mShader = shader;
   this->updateModel();
   noOfBoxes++;
-  CreateBoundBox();
+  mBoundBoxEdges = new sBoundBoxEdges;
   // first box
   if (noOfBoxes == 1)
   {
@@ -74,7 +74,8 @@ Box::Box(glm::vec3 position, glm::vec3 scale, Shader* shader, const char* name, 
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     // set default texture for this
-    boxTexture = this->loadTexture("../textures/marble.jpg");
+    // boxTexture = this->loadTexture("../textures/marble.jpg");
+    boxTexture = this->loadTexture("../textures/dan_bono.jpg");
   }
 }
 
@@ -87,8 +88,6 @@ Box::~Box()
     glDeleteVertexArrays(1, &boxVAO);
     glDeleteBuffers(1, &boxVBO);
   }
-  delete mBoundBox;
-  delete mBoundBoxNonRotated;
   delete mBoundBoxEdges;
 }
 
@@ -112,67 +111,20 @@ void Box::draw()
   glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
-void Box::CreateBoundBox()
-{
-  if (mBoundBox == nullptr && mBoundBoxNonRotated == nullptr)
-  {
-      // bound box
-      mBoundBox           = new sBoundBox;
-      mBoundBoxNonRotated = new sBoundBox;
-      mBoundBoxEdges      = new sBoundBoxEdges;
-      // populate non rotated
-      glm::vec3 halfSide         = 0.5f * glm::abs(this->mScale);
-      mBoundBoxNonRotated->bot11 = -halfSide;
-      mBoundBoxNonRotated->bot12 = glm::vec3( halfSide.x, -halfSide.y, -halfSide.z);
-      mBoundBoxNonRotated->bot13 = glm::vec3( halfSide.x, -halfSide.y,  halfSide.z);
-      mBoundBoxNonRotated->bot14 = glm::vec3(-halfSide.x, -halfSide.y,  halfSide.z);
-      mBoundBoxNonRotated->top11 = glm::vec3(-halfSide.x,  halfSide.y, -halfSide.z);
-      mBoundBoxNonRotated->top12 = glm::vec3( halfSide.x,  halfSide.y, -halfSide.z);
-      mBoundBoxNonRotated->top13 = halfSide;
-      mBoundBoxNonRotated->top14 = glm::vec3(-halfSide.x,  halfSide.y,  halfSide.z);
-  }
-}
-
 void Box::UpdateBoundBox()
 {
-  if ((nullptr == mBoundBox) || (nullptr == mBoundBoxNonRotated)) 
-  {
-    std::cout << "Grave grave error!" << std::endl;
-    return;
-  }
   // get upper 3x3 matrix (Rotation matrix) from the model matrix
-  //glm::mat3 rotM  = glm::mat3(mModel);
-  glm::mat3 rotM = glm::mat3(glm::rotate(glm::mat4(1.0f), mRotationMag, mRotation));
-  // rotate all the points with the current rotation matrix 
-  // and translate around object center
-  mBoundBox->top11 = (rotM * mBoundBoxNonRotated->top11) + mPosition;
-  mBoundBox->top12 = (rotM * mBoundBoxNonRotated->top12) + mPosition;
-  mBoundBox->top13 = (rotM * mBoundBoxNonRotated->top13) + mPosition;
-  mBoundBox->top14 = (rotM * mBoundBoxNonRotated->top14) + mPosition;
-  mBoundBox->bot11 = (rotM * mBoundBoxNonRotated->bot11) + mPosition;
-  mBoundBox->bot12 = (rotM * mBoundBoxNonRotated->bot12) + mPosition;
-  mBoundBox->bot13 = (rotM * mBoundBoxNonRotated->bot13) + mPosition;
-  mBoundBox->bot14 = (rotM * mBoundBoxNonRotated->bot14) + mPosition;
-  // move to separate function?
-  mBoundBoxEdges->Ax = mBoundBox->bot12 - mBoundBox->bot11;
-  mBoundBoxEdges->Ay = mBoundBox->top11 - mBoundBox->bot11;
-  mBoundBoxEdges->Az = mBoundBox->bot14 - mBoundBox->bot11;
-  // std::cout << "Rot for " << mName << "(x): " << glm::to_string(rotM) << std::endl;
-  // they have to be unit vectors
-  mBoundBoxEdges->Ax = glm::normalize(mBoundBoxEdges->Ax);
-  mBoundBoxEdges->Ay = glm::normalize(mBoundBoxEdges->Ay);
-  mBoundBoxEdges->Az = glm::normalize(mBoundBoxEdges->Az);
-  // std::cout << "Ax for " << mName << glm::to_string(mBoundBoxEdges->Ax) << std::endl;
-  // std::cout << "Ay for " << mName << glm::to_string(mBoundBoxEdges->Ay) << std::endl;
-  // std::cout << "Az for " << mName << glm::to_string(mBoundBoxEdges->Az) << "\n" << std::endl;
-
+  glm::mat3 rotM  = getRotationMatrix();
+  // // they have to be unit vectors!
+  mBoundBoxEdges->Ax = glm::normalize(rotM[0]);
+  mBoundBoxEdges->Ay = glm::normalize(rotM[1]);
+  mBoundBoxEdges->Az = glm::normalize(rotM[2]);
 }
 
 
 float Box::containingRadius()
 {
   // sides from center are 1/2. Using Pyth. Theorem, and squaring we get:
-  // (a/2)^2 + (b/2)^2 + (c/2)^2 = (a^2 + b^2 + c^2) / 4 = r^2
-  // by convention we do not divide by 4 in these calcs to speed up computation
+  // (a/2)^2 + (b/2)^2 + (c/2)^2 = (a^2 + b^2 + c^2) / 4 = r^2    <=>  r = sqrt(a<dot>a) / 2
   return (glm::sqrt((glm::dot(mScale, mScale))) / 2);
 }

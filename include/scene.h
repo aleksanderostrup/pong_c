@@ -1,6 +1,7 @@
 #pragma once
 
 #include "object.h"
+#include <map>
 // #include <glm/glm.hpp>
 // #include <glm/gtc/matrix_transform.hpp>
 // #include <glm/gtc/type_ptr.hpp>
@@ -19,11 +20,56 @@ class Scene
 
     void updateScene(float deltaTime, bool isPaused)
     {
+
       if (!isPaused) 
       {
-        detectCollisions();
+        UpdatePos(deltaTime, isPaused);
+        // do not calculate, just check
+        if (detectCollisions(true))
+        {
+          float timeLeft = deltaTime;
+          float updateTimeGran = deltaTime;
+          // controls the detection granularity
+          // could be made dependent on fastest relative collision speed for even better performance
+          const size_t divDepthMax = 5;
+          while (true)
+          {
+            // reset depth
+            size_t divDepth = 0; // 0 = full time step
+            do 
+            {
+              // 1) go to previous position
+              stepBackObjects();
+              // sub-divide
+              updateTimeGran /= 2;
+              divDepth++;
+              // move objects forward, but with only half the time step
+              UpdatePos(updateTimeGran, isPaused);
+              std::cout << "Div depth is : " << divDepth << std::endl;
+            }
+            // keep dividing while we have a collision or reached the binary depth
+            while (detectCollisions(true) && (divDepth != divDepthMax));
+            if (timeLeft <= updateTimeGran)
+            {
+              // the whole timesteps (deltaTime) has been updated
+              break;
+            }
+            timeLeft -= updateTimeGran;
+            // resolve the collisions
+            detectCollisions(false);
+            updateTimeGran = timeLeft;
+            // try to move to the end of the timestep
+            UpdatePos(updateTimeGran, isPaused);
+            if (!detectCollisions(true))
+            {
+              // if no collisions to resolve, exit at the final time step
+              break;
+            }
+          }
+        }
       }
-      drawObjectsAndUpdatePos(deltaTime, isPaused);
+
+      drawObjects();
     }
 
   protected:
@@ -31,21 +77,33 @@ class Scene
   public:
     void addObject(Object* obj)
     {
-        objects.push_back(obj);
+      std::string concName;
+      for (auto it = this->objects.begin() ; it != this->objects.end(); ++it)
+      {
+        if (strcmp((*it)->getName(), obj->getName()) == 0)
+        {
+          std::cout << "Error, name " << obj->getName() << " already exists - aborting program." << std::endl;
+          exit(0);
+        }
+      }
+      objects.push_back(obj);
     }
 
   private:
 
-    float                 gridsize;
-    std::vector<Object*>  objects;
+    float                                 gridsize;
+    std::vector<Object*>                  objects;
+    std::map<string, sLastSeparatingAxis> lastSeparatingAxis;
 
-    // simple brute force collision detection algorithm
-    // -- can easily be improved (see fx literature or just pick low-hanging fruits to get major improvements)
-    // notes: right now we have a n^2 runtime. If we do a local search instead this can be minimized by moving objects into localized subspaces.
-    // there should be an optimized number of subspaces. downsize is that we have to handle moves between subspaces and that objects can be in multiple subspaces
-    // see also: https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
-    void detectCollisions()
+    // TODO : parallelize if we have more than N objects
+    //        join threads in the end
+    bool detectCollisions(bool abortOnFirst)
     {
+      sLastSeparatingAxis lsa;
+      bool withinSphere;
+      std::string concName;
+      glm::mat3 C_ij;
+
       for (auto it = this->objects.begin() ; it != this->objects.end(); ++it)
       {
         // only check all objects that's after the one we're currently checking (to avoid double checks)
@@ -59,16 +117,39 @@ class Scene
           }
 
           // objects shall have checkCollision that takes in an object
-          if ((*it)->checkCollision(* it2))
+          if ((*it)->checkCollision(*it2, &lsa, &withinSphere, C_ij))
           {
-            std::cout << "collision!!" <<  std::endl;
-            (*it)->calcCollision(*it2);
+            if (abortOnFirst)
+            {
+              return true;
+            }
+            concName = std::string((*it)->getName()) + std::string((*it2)->getName());
+            std::cout << "collision!" <<  std::endl;
+            sCollisionPoint colPoint;
+            (*it)->getCollisionPoint(lastSeparatingAxis[concName], colPoint, C_ij, *it2);
+            (*it)->calcCollision(*it2, colPoint, lastSeparatingAxis[concName].normal);
+            return true;
           }
+          // start tracking last separating axis when inside sphere
+          else if (withinSphere)
+          {
+            concName = std::string((*it)->getName()) + std::string((*it2)->getName());
+            std::pair<std::map<std::string, sLastSeparatingAxis>::iterator, bool> retPair;
+            retPair = lastSeparatingAxis.insert(std::pair<std::string, sLastSeparatingAxis>(concName, lsa));
+             
+            if ((retPair.second == false) &&                // if already inserted AND
+                (retPair.first->second.index != lsa.index)) // new LSA
+            {
+              lastSeparatingAxis[concName] = lsa; // overwrite
+            }
+          }
+          
         }
-      } 
+      }
+      return false;
     }
 
-    void drawObjectsAndUpdatePos(float deltaTime, bool isPaused)
+    void UpdatePos(float deltaTime, bool isPaused)
     {
       for (auto& o : objects)
       {
@@ -81,6 +162,24 @@ class Scene
         o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
         o->draw();
         o->checkForErrors();
+      }
+    }
+    
+    void drawObjects()
+    {
+      for (auto& o : objects)
+      {
+        o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
+        o->draw();
+        o->checkForErrors();
+      }
+    }
+
+    void stepBackObjects()
+    {
+      for (auto& o : objects)
+      {
+        o->goToPrevPosRot();
       }
     }
 };

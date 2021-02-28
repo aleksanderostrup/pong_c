@@ -1,2 +1,6 @@
 *.cpp.o
 *.c.o
+/link.txt
+/C.includecache
+/CXX.includecache
+/depend.internal

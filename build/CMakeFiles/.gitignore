@@ -1,3 +1,5 @@
 /Makefile2
 /progress.marks
 /TargetDirectories.txt
+/CMakeOutput.log
+/cmake.check_cache
