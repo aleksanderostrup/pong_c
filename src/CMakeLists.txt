@@ -21,6 +21,8 @@ add_executable(pong3d
     main.cpp
     inputprocess.cpp
     glfw_setup.cpp
+    cmdInterpreter.cpp
+    sceneFactory.cpp
 )
 
 target_include_directories(pong3d

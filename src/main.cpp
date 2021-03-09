@@ -12,6 +12,8 @@
 #include "../include/cube.h"
 #include "../include/plane.h"
 #include "../include/scene.h"
+#include "../include/sceneFactory.h"
+#include "../include/cmdInterpreter.h"
 #include "../include/inputprocess.h"
 #include "../include/glfw_setup.h"
 
@@ -19,6 +21,7 @@
 #include <vector>
 #include <thread>
 #include <time.h>
+#include <cmath>
 
 /*
 todo:
@@ -26,6 +29,7 @@ todo:
     - threading
         * have an input thread running or just wrap in class and poll?
     - audio from https://openal.org/  [openGL like API with 3D sound]
+    - audio should use a 2D LUT with both dims = material and value = sound 
     - more physics
     - lightning class
     - continue with advanced OpenGL https://learnopengl.com/Advanced-OpenGL/Framebuffers
@@ -38,6 +42,10 @@ todo:
         * fun implementation: each box selects a different track being played :)
         * join with the openal implementation
     - object highlighting and selecting (with lookAt)
+    - manipulation of selected objects
+    - console with command input
+        * one should be to print total linear momentum / angular momentum -> we can check if it is preserved
+        * one should be to start recording (of postions) so we can go back and forth to observe. This requires recording all the physical parameters
     - skybox 
     - themes (including Dan theme)
     - go through comments and fix stuff
@@ -56,6 +64,9 @@ todo:
     - the information stored between two objects can be released once their 'spheres' don't touch anymore, thus re-using the memory
     - better collision handling by making box slightly bigger until collision - at the collision it just retracts to 'original' / correct size, and bounces back again
       after a few frames
+    - inertia tensor should be calculated for all boxes (I = M * (side^2) / 6 * (3 dim Unity matrix))
+    - replace deltaTime in UpdateScene with the variable 
+    - rename box to parallelipiped?
 */
 
 void threadTest();
@@ -103,66 +114,26 @@ int main()
     // -------------------------
     Shader shader("../shaders/shader.vs", "../shaders/shader.fs");
 
+
+    // add commands and put the interpreter in a new thread -> poll it in frame loop?
+    // we should add a wrapper around the interpreter that handles commands as either sync or async
+    // sync commands are run in the frame loop, async are meta commands that are run immediately
+    // we should keep the CmdInterpreter completely agnostic about anything related to graphics and let the wrapper handle it if needed
+
+    // CmdInterpreter cmdIntptr;
+    // CmdInterpreter::CmdInterpreterFnc testFnc = [](std::string str) { std::cout << "Running test command! " << str << "\n"; };
+    // cmdIntptr.addCmd(std::string("test"), testFnc);
+    // cmdIntptr.getCmd();
+
     
     // create a scene
-    Scene   scene    (0.01);
-    Cube    cube1    (glm::vec3( 0.0f, 0.0f,  0.0f),  1.0f, &shader, "cube1", 1.0f);
-    Box     cube2    (glm::vec3( 30.0f, 0.0f,  0.0f),  glm::vec3( 2.0f, 1.0f,  1.0f), &shader, "cube2");
-    Cube    cube3    (glm::vec3( 0.0f, 3.0f,  0.0f),  1.0f, &shader, "cube3", 1.0f);
-    Cube    cube12   (glm::vec3( 0.0f, 0.0f,  -4.0f), 1.0f, &shader, "cube12", 50000.0f);
-    Box     cube22   (glm::vec3( 3.0f, 0.0f,  -4.0f), glm::vec3( 2.0f, 1.0f,  1.0f), &shader, "cube22");
-    Box     cube33   (glm::vec3( 3.0f, 0.0f,  -8.0f), glm::vec3( 2.0f, 1.0f,  1.0f), &shader, "cube33");
-    //      Cube      cube2(glm::vec3( 2.0f, 0.0f,  0.0f), 1.0f, &shader, "cube2");
-    Cube    cube10   (glm::vec3( 0.0f, 0.0f,  -3.5f), 1.0f, &shader, "cube10", 50000.0f);
-    Box     box20    (glm::vec3( 3.0f, 0.0f,  -3.5f), glm::vec3( 1.0f, 1.0f,  1.0f), &shader, "box20");
-    //      Cube      cube3(glm::vec3( 9.0f, 0.0f, -1.0f), 1.0f, &shader, "cube3");
-    //      Cube      cube4(glm::vec3(-1.0f, 0.0f, -5.0f), 1.0f, &shader, "cube4");
-    //      Cube      cube5(glm::vec3( 2.0f, 0.0f, -5.0f), 1.0f, &shader, "cube5");
-    //      Cube      cube6(glm::vec3( 9.0f, 0.0f, -5.0f), 1.0f, &shader, "cube6");
-    Plane   plane1   (glm::vec3(10.0f, 0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), &shader, "plane1");
-    Plane   plane2   (glm::vec3(10.0f, 0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), &shader, "plane2");
-
-    // debug
-    dbgObj.push_back(&cube1);
-    dbgObj.push_back(&cube2);
-
-    // cube1.setVelocity(glm::vec3(0.3f, 0.0f, 0.0f));
-    // cube4.setVelocity(glm::vec3(0.3f, 0.0f, 0.0f));
-    // cube6.setVelocity(glm::vec3(0.0f, 0.0f, 0.3f));
-    // cube1.setScale(glm::vec3(2.0f, 1.0f, 2.0f)); // showing that that the 'horizontal' plane is actually the xz-plane! 
-    cube1.setRotation(-1.3f * glm::vec3( 0.1f, 0.1f, 0.1f));
-    cube2.setRotation(1.3f * glm::vec3( 0.1f, 0.1f, 0.1f));
-    // cube2.setRotation(-0.3f * glm::vec3( 0.0f, 1.0f, 0.0f));
-    // cube1.setRotationVelocity(1.8f * glm::vec3( 0.0f, 1.0f, 1.0f));
-    cube2.setVelocity(glm::vec3(-25.32f, 0.0f, 0.0f));
-    // cube3.setVelocity(glm::vec3( 0.0f, -0.32, 0.0f));
-    // cube2.setRotationVelocity(0.13f * glm::vec3( 0.0f, 1.0f, 1.0f));
-    // cube2.setRotation(glm::vec3( 1.0f, 0.0f, 1.0f));
-    cube12.setRotation(glm::vec3( 1.0f, 0.0f, 1.0f));
-    cube22.setVelocity(glm::vec3(-0.1f, 0.0f, 0.0f));
-    // cube22.setRotation(glm::vec3(0.0f, 0.0f, 3.0f), 1.0);
-    cube33.setRotationVelocity(5.0f * glm::vec3(0.0f, 0.0f, 1.0f));
-    // cube10.setRotation(glm::vec3( 0.0f, 1.0f, 1.0f), 1.32 * 3.14 / 4);
-    // box20.setRotation(-glm::vec3( 0.0f, 1.0f, 1.0f),  1.32 * 3.14 / 4);
-    // box20.setVelocity(glm::vec3(-0.3f, 0.0f, 0.0f));
-    // plane1.setRotationVelocity(glm::vec3(0.0f, 1.0f, 0.0f));
-    // plane1.setRotation(glm::vec3(0.0f, 1.0f, 0.0f));
-    // plane2.setRotationVelocity(glm::vec3(0.0f, 1.0f, 0.0f));
-    // scene.addObject(&plane1);
-    // scene.addObject(&plane2);
-    scene.addObject(&cube1);
-    scene.addObject(&cube2);
-    // scene.addObject(&cube3);
-    // scene.addObject(&cube12);
-    // scene.addObject(&cube22);
-    // scene.addObject(&cube33);
-    // scene.addObject(&cube10);
-    // scene.addObject(&box20);
-    // scene.addObject(&cube3);
-    // scene.addObject(&cube4);
-    // scene.addObject(&cube5);
-    // scene.addObject(&cube6);
+    SceneFactory sceneFactory;
+    std::cout << "Getting scene: \n";
+    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest3, shader);
     
+    // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
+    // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 
+    // object it hits because the collision point could not be resolved
 
     float transparentVertices[] = {
         // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
@@ -189,14 +160,13 @@ int main()
 
     // load textures
     // -------------
-    // unsigned int floorTexture = loadTexture("textures/metal.png");
     unsigned int transparentTexture = loadTexture("../textures/window.png");
 
     // transparent window locations
     // --------------------------------
     vector<glm::vec3> windows
     {
-        glm::vec3( 0.5910f - 0.5f, 0.38f, -0.30f),
+        glm::vec3( -1.350388 - 0.5f, 0.382403, 0.104056 ),
         // glm::vec3( -0.0f, 0.0f, 0.0f),
         // glm::vec3( 1.5f, 0.0f, 0.51f),
         // glm::vec3( 0.0f, 0.0f, 0.7f),
@@ -208,6 +178,7 @@ int main()
     // --------------------
     shader.use(); // if multiple shaders exists, they should be set to use in the render loop
     shader.setInt("texture1", 0);
+    float timeMultiplier = 1.0f; // speed time up or down
 
     // render loop
     // -----------
@@ -260,9 +231,14 @@ int main()
         // only update frame if we want pause and no step frame forward
         bool pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
 
+        if      (inputProcess.keyActions.fAction)        { scene.stupidDebug(); }
+        if      (inputProcess.keyActions.keyUpAction)    {std::cout << "Up\n"; timeMultiplier *= 2; }
+        else if (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
+
+        // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!!!!!!
         // all objects are moved, drawn here
         // also, collisions are detected and calculated
-        scene.updateScene(deltaTime, pauseFrame);
+        scene.updateScene(0.0124 * timeMultiplier/* deltaTime */, pauseFrame);
         
         // windows (from furthest to nearest)
         glBindVertexArray(transparentVAO);

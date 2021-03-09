@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -54,6 +55,15 @@ typedef struct
   glm::vec3 p_abs; // absolute coordinates
 } sCollisionPoint;
 
+// holds the complete state of the object
+typedef struct
+{
+  glm::vec3 velocity;         // dx/dt
+  glm::vec3 position;         //  x
+  glm::vec3 rotationVelocity; // dw/dt
+  glm::vec3 rotation;         //  w
+} sObjectState;
+
 class Object
 {
 public:
@@ -66,31 +76,26 @@ public:
   };
 
   Object(glm::vec3 position, glm::vec3 scale, const char* name, float mass = 1.0f) :
-    mVelocity          (glm::vec3(0.0f)),
-    mPosition          (position),
     mScale             (scale),
     mInertiaTensor     (glm::mat3(1.0f)), // good for cubes, but must be overwritten for other objects
-    mRotationVelocity  (glm::vec3(0.0f, 0.0f, 0.0f)),
-    mRotation          (glm::vec3(0.0f, 0.0f, 0.0f)),
     mMass              (mass),
     mDebugOutputOn     (false),
     mIgnoreCollision   (false),
     mName              (name)
   {
-
+    mState.velocity          = glm::vec3(0.0f);
+    mState.position          = position;
+    mState.rotationVelocity  = glm::vec3(0.0f, 0.0f, 0.0f);
+    mState.rotation          = glm::vec3(0.0f, 0.0f, 0.0f);
   }
 
 protected:
 
-  glm::vec3       mVelocity;
-  glm::vec3       mPosition;
-  glm::vec3       mPrevPosition;
+  sObjectState    mState;
+  sObjectState    mRecState;
   glm::vec3       mScale;
   glm::mat4       mModel;
   glm::mat3       mInertiaTensor;
-  glm::vec3       mRotationVelocity;
-  glm::vec3       mRotation;
-  glm::vec3       mPrevRotation;
   const float     mMass;
   bool            mDebugOutputOn;
   bool            mIgnoreCollision;
@@ -188,7 +193,7 @@ public:
 
   void printObject()
   {
-    std::string modelFormatted {glm::to_string(this->mModel)};
+    std::string modelFormatted {glm::to_string(mModel)};
     const std::regex  re {R"(\)\,\s\()"};
     const std::string replStr = ")\n(";
     const std::regex  reStart {R"(\(\()"};
@@ -204,15 +209,15 @@ public:
       boundBoxStr += "Az: " + glm::to_string(mBoundBoxEdges->Az) + "\n";
     }
 
-    std::cout << "name: "             <<  this->mName                             << "\n"
-              << "position: "         <<  glm::to_string(this->mPosition)         << "\n"
-              << "scale: "            <<  glm::to_string(this->mScale)            << "\n"
-              << "velocity: "         <<  glm::to_string(this->mVelocity)         << "\n"
-              << "rotation: "         <<  glm::to_string(this->mRotation)         << "\n"
-              << "rotationVelocity: " <<  glm::to_string(this->mRotationVelocity) << "\n"
-              << "mass: "             <<  this->mMass                             << "\n"
+    std::cout << "name: "             <<  mName                                   << "\n"
+              << "position: "         <<  glm::to_string(mState.position)         << "\n"
+              << "scale: "            <<  glm::to_string(mScale)                  << "\n"
+              << "velocity: "         <<  glm::to_string(mState.velocity)         << "\n"
+              << "rotation: "         <<  glm::to_string(mState.rotation)         << "\n"
+              << "rotationVelocity: " <<  glm::to_string(mState.rotationVelocity) << "\n"
+              << "mass: "             <<  mMass                                   << "\n"
               << "model: "            <<  modelFormatted                          << "\n"
-              << "debugOutputOn: "    <<  this->mDebugOutputOn                    << "\n"
+              << "debugOutputOn: "    <<  mDebugOutputOn                          << "\n"
               << "boundbox: "         <<  boundBoxStr                             << "\n"
               << std::endl;
   }
@@ -220,42 +225,34 @@ public:
   void updateModel()
   {
     mModel = glm::mat4(1.0f);
-    mModel = glm::translate(mModel, mPosition);
-    float rotMag = glm::length(mRotation);
+    mModel = glm::translate(mModel, mState.position);
+    float rotMag = glm::length(mState.rotation);
     if (rotMag > 0.0f)
     {
-      mModel = glm::rotate(mModel, rotMag, glm::normalize(mRotation));
+      mModel = glm::rotate(mModel, rotMag, glm::normalize(mState.rotation));
     }
     mModel = glm::scale(mModel, mScale);
   }
 
   void updatePosition(float dt)
   {
-    mPrevPosition = mPosition;
-    mPosition += mVelocity * dt;
-    if (this->mDebugOutputOn)
+    mState.position += mState.velocity * dt;
+    if (mDebugOutputOn)
     {
-      std::cout << glm::to_string(mPosition) << std::endl;
+      std::cout << glm::to_string(mState.position) << std::endl;
     }
-    this->updateModel();
+    updateModel();
   }
 
   void updateRotation(float dt)
   {
-    mPrevRotation = mRotation;
-    mRotation += mRotationVelocity * dt;
-    this->updateModel();
-  }
-
-  void goToPrevPosRot()
-  {
-    mPosition = mPrevPosition;
-    mRotation = mPrevRotation;
+    mState.rotation += mState.rotationVelocity * dt;
+    updateModel();
   }
 
   void setVelocity(const glm::vec3& velocity)
   {
-    this->mVelocity = velocity;
+    mState.velocity    = velocity;
   }
 
   // sets a fixed rotation, does not set or rotation velocity
@@ -263,27 +260,32 @@ public:
   // radians to rotate. Set as 0 length vector to set as non-rotated.
   void setRotation(const glm::vec3& rotation)
   {
-    this->mRotation = rotation;
+    mState.rotation = rotation;
   }
 
   void setScale(const glm::vec3& scale)
   {
-    this->mScale = scale;
+    mScale = scale;
   }
 
   void setRotationVelocity(const glm::vec3& rotationVelocity)
   {
-    this->mRotationVelocity = rotationVelocity;
+    mState.rotationVelocity = rotationVelocity;
+  }
+
+  void setPosition(glm::vec3 pos) // debug only!
+  {
+    mState.position = pos;
   }
 
   glm::vec3 getPosition()
   {
-    return this->mPosition;
+    return mState.position;
   }
 
   glm::vec3 getVelocity()
   {
-    return this->mVelocity;
+    return mState.velocity;
   }
 
   void setDebugInfo(bool on)
@@ -293,7 +295,7 @@ public:
 
   glm::vec3& getEdge(uint32_t index) const
   {
-    return (*(this->mBoundBoxEdges))[index];
+    return (*(mBoundBoxEdges))[index];
   }
 
   inline float sign(float v)
@@ -444,7 +446,7 @@ public:
 
   inline void calcAbsPos(glm::vec3& p_abs, glm::vec3& p_rel, const Object* obj)
   {
-    p_abs  = obj->mPosition;
+    p_abs  = obj->mState.position;
     p_abs += p_rel[0] * obj->getEdge(0);
     p_abs += p_rel[1] * obj->getEdge(1);
     p_abs += p_rel[2] * obj->getEdge(2);
@@ -461,8 +463,8 @@ public:
 
     glm::vec3 a_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
     glm::vec3 b_i = 0.5f * B->mScale;
-    glm::vec3 C0 = A->mPosition; // center of A
-    glm::vec3 C1 = B->mPosition; // center of B
+    glm::vec3 C0 = A->mState.position; // center of A
+    glm::vec3 C1 = B->mState.position; // center of B
     glm::vec3 D  = C1 - C0; // [DCD p. 6]
     std::cout << "LSA: " << lsa.index << std::endl;
     std::cout << "C_ij: " << glm::to_string(C_ij) << std::endl;
@@ -471,9 +473,9 @@ public:
     if (lsa.index < 3)
     {
       
-      colPoint.y_rel[0] = -sigma * sign(C_ij[0][lsa.index]) * b_i[0];
-      colPoint.y_rel[1] = -sigma * sign(C_ij[1][lsa.index]) * b_i[1];
-      colPoint.y_rel[2] = -sigma * sign(C_ij[2][lsa.index]) * b_i[2];
+      colPoint.y_rel[0] = -sigma * sign(C_ij[0][index]) * b_i[0];
+      colPoint.y_rel[1] = -sigma * sign(C_ij[1][index]) * b_i[1];
+      colPoint.y_rel[2] = -sigma * sign(C_ij[2][index]) * b_i[2];
       if ((kFaceFace == collisionType) || (kEdgeFace == collisionType))
       {
         float yj_min;
@@ -560,15 +562,6 @@ public:
       {
         xi0 /= tmp;
       }
-      // for index = 13
-      // 0,1 or 1,0
-      // 1,1 or 1,1
-      // 2,0 or 0,2
-      // 2,2 or 2,2
-      // 2,1 or 2,1
-      // 2,1 or 2,1
-
-
 
       calcAbsPos(colPoint.p_abs, colPoint.x_rel, A);
       std::cout << "After: Collision point rel: "<< glm::to_string(colPoint.x_rel) << std::endl;
@@ -627,8 +620,8 @@ public:
     // skip test if spheres not overlapping
     float minR = A->containingRadius() + B->containingRadius();
     minR *= minR; // square
-    glm::vec3 C0 = A->mPosition; // center of A
-    glm::vec3 C1 = B->mPosition; // center of B
+    glm::vec3 C0 = A->mState.position; // center of A
+    glm::vec3 C1 = B->mState.position; // center of B
     glm::vec3 D  = C1 - C0; // [DCD p. 6]
     float actualR = glm::dot(D, D); // by convention we do not divide by 4 in these calcs to speed up computation
     // if we are not within sphere, abort now
@@ -777,15 +770,15 @@ public:
     glm::vec3 v_lin_p1 = this->getVelocity();
     glm::vec3 v_lin_p2 = obj->getVelocity();
     // get center to point of contact vector
-    glm::vec3 r_1  = colPoint.p_abs - this->mPosition;
-    glm::vec3 r_2  = colPoint.p_abs - obj->mPosition;
+    glm::vec3 r_1  = colPoint.p_abs - this->mState.position;
+    glm::vec3 r_2  = colPoint.p_abs - obj->mState.position;
     // get angular velocities
-    glm::vec3 w_1  = this->mRotationVelocity;
-    glm::vec3 w_2  = obj->mRotationVelocity;
+    glm::vec3 w_1  = this->mState.rotationVelocity;
+    glm::vec3 w_2  = obj->mState.rotationVelocity;
 
     // get masses
-    float m1 = this->mMass;
-    float m2 = obj->mMass;
+    const float m1 = this->mMass;
+    const float m2 = obj->mMass;
 
     // calculate v_p1 and v_p2 AT THE POINT OF CONTACT, so if they are rotating we have:
     glm::vec3 v_p1 = v_lin_p1 + glm::cross(w_1, r_1);
@@ -807,6 +800,7 @@ public:
     tmp          += glm::cross(I2_calc, r_2);
     jr_denom     += glm::dot(tmp, n);
     double jr = jr_nom / jr_denom;
+    
     glm::vec3 vjr = ((float)jr) * n;
 
     // calculate new velocities
@@ -817,6 +811,10 @@ public:
     glm::vec3 w_1a = w_1 - ((float) jr) * I1_calc;
     glm::vec3 w_2a = w_2 + ((float) jr) * I2_calc;
 
+    std::cout << "Collision between: " << this->mName << " and " << obj->mName << std::endl;
+    std::cout << "colpoint: " << glm::to_string(colPoint.p_abs) << std::endl;
+    std::cout << "normal: " << glm::to_string(n) << std::endl;
+    std::cout << "vr: " << glm::to_string(vr) << std::endl;
     std::cout << "r1: " << glm::to_string(r_1) << std::endl;
     std::cout << "r2: " << glm::to_string(r_2) << std::endl;
     std::cout << "w1: " << glm::to_string(w_1) << std::endl;
@@ -835,12 +833,6 @@ public:
     this->setRotationVelocity(w_1a);
     obj->setRotationVelocity(w_2a);
 
-    // we should remember where the objects were in the previous frame and move them back there
-    // as a simple first approximation
-    this->goToPrevPosRot();
-    obj->goToPrevPosRot();
-    // this->updatePosition(0.03);
-    // obj->updatePosition(0.03);
   }
 
   const char* getName()
@@ -848,14 +840,24 @@ public:
     return mName;
   }
 
+  void recordState()
+  {
+    mRecState = mState;
+  }
+
+  void restoreRecState()
+  {
+    mState = mRecState;
+  }
+
   protected:
     glm::mat3 getRotationMatrix()
     {
-      float rotMag = glm::length(mRotation);
+      float rotMag = glm::length(mState.rotation);
       glm::mat4 rotM = glm::mat4(1.0f);
       if (rotMag > 0.0f)
       {
-        rotM = glm::rotate(rotM, rotMag, glm::normalize(mRotation));
+        rotM = glm::rotate(rotM, rotMag, glm::normalize(mState.rotation));
       }
       return glm::mat3(rotM);
     }

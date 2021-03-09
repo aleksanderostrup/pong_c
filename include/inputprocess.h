@@ -8,9 +8,12 @@ class InputProcess
   public:
 
     struct KeyboardActions {
-      bool pause = false;
-      bool printDebug = false;
-      bool frameForward = false;
+      bool pause         = false;
+      bool printDebug    = false;
+      bool frameForward  = false;
+      bool fAction       = false;
+      bool keyUpAction   = false;
+      bool keyDownAction = false;
     } keyActions;
     
     InputProcess(GLFWwindow* window, Camera* camera);
@@ -27,8 +30,13 @@ class InputProcess
     // bool        mPauseKeyPressed    = false;
     // bool        mPrintDbgKeyPressed = false;
     struct KeyboardPressed {
-      bool isPausePressed = false;
-      bool isPrintDbgPressed = false;
+      bool isPausePressed        = false;
+      bool isPrintDbgPressed     = false;
       bool isFrameForwardPressed = false;
+      bool isFrameFPressed       = false;
+      bool isFPressed            = false;
+      bool isUpKeyPressed        = false;
+      bool isDownKeyPressed      = false;
+
     } keysPressed;
 };

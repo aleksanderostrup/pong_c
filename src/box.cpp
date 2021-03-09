@@ -1,13 +1,31 @@
 #include "../include/box.h"
+#include <cmath>
 
 static int noOfBoxes = 0;
 static unsigned int boxVAO, boxVBO;
 // this should be selectable via a map
 static unsigned int boxTexture;
 
+static inline glm::mat3 CalcInertiaTensor(glm::vec3& scale, float mass)
+{
+  // formula refers to the whole side of the side of the cuboid
+  float h2     = std::pow(scale.y, 2);
+  float w2     = std::pow(scale.x, 2);
+  float d2     = std::pow(scale.z, 2);
+  glm::vec3 Ix = glm::vec3(h2 + d2, 0, 0);
+  glm::vec3 Iy = glm::vec3(0, w2 + d2, 0);
+  glm::vec3 Iz = glm::vec3(0, 0, w2 + h2);
+  glm::mat3 test = (mass / 12 * glm::mat3(Ix, Iy, Iz));
+  std::cout << glm::to_string(test) << std::endl;;
+  
+  return test;
+}
+
 Box::Box(glm::vec3 position, glm::vec3 scale, Shader* shader, const char* name, float mass) : 
   Object(position, scale, name, mass)
 {
+  // std::cout << name << " I:\n";
+  // mInertiaTensor = CalcInertiaTensor(scale, mass);
   this->mShader = shader;
   this->updateModel();
   noOfBoxes++;
@@ -127,4 +145,17 @@ float Box::containingRadius()
   // sides from center are 1/2. Using Pyth. Theorem, and squaring we get:
   // (a/2)^2 + (b/2)^2 + (c/2)^2 = (a^2 + b^2 + c^2) / 4 = r^2    <=>  r = sqrt(a<dot>a) / 2
   return (glm::sqrt((glm::dot(mScale, mScale))) / 2);
+}
+
+bool Box::SetTexture(EnumTexture texture)
+{
+  const char* textureFile;
+  switch (texture)
+  {
+    case kDan:    textureFile = (const char*)"../textures/dan_bono.jpg";
+    case kMetal:  textureFile = (const char*)"../textures/marble.jpg";
+    default:      return false;
+  }
+  this->loadTexture(textureFile);
+  return true;
 }
