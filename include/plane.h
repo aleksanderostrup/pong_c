@@ -8,14 +8,14 @@ class Plane : public Object
 {
   public:
 
-    Plane(glm::vec3 position, glm::vec2 xyscale, Shader* shader, const char* name, float mass=1.0f);
+    Plane(glm::vec3 position, glm::vec2 xyscale, const char* name, float mass=1.0f);
     ~Plane();
 
     void  drawInit();
-    void  draw();
+    void  draw(Shader& shader);
     void  UpdateBoundBox();
     float containingRadius();
 
   private:
-    Shader* shader;
+  
 };

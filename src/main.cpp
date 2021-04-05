@@ -10,6 +10,7 @@
 #include "../include/camera.h"
 #include "../include/model.h"
 #include "../include/cube.h"
+#include "../include/skybox.h"
 #include "../include/plane.h"
 #include "../include/scene.h"
 #include "../include/sceneFactory.h"
@@ -46,36 +47,35 @@ todo:
     - console with command input
         * one should be to print total linear momentum / angular momentum -> we can check if it is preserved
         * one should be to start recording (of postions) so we can go back and forth to observe. This requires recording all the physical parameters
-    - skybox 
     - themes (including Dan theme)
     - go through comments and fix stuff
     - instant test scenatios
     - command line input
     - track object with a (user-defined?) depth so we can back track once on collision (for a simple start)
       and go back in time a few frames to inspect collisions
-    - rotation in 3 degrees
     - check functions and set pass by reference where apt
     - slow motion (via dt)
     - consider renaming scene.h / camera.h (others?), since assimp has same named header files!
     - add this amazing resource to the docs: https://www.geometrictools.com/Documentation/Documentation.html
-    - deleteCreateBoundBox and associated structs -> we can simply extract orthonormal vectors from the rotated model and extent from mScale
     - use caching in SAT ie use last failing index / axis first on next try!
     - pre-compute sphere and store in object, instead of taking sqrt every frame!
     - the information stored between two objects can be released once their 'spheres' don't touch anymore, thus re-using the memory
     - better collision handling by making box slightly bigger until collision - at the collision it just retracts to 'original' / correct size, and bounces back again
       after a few frames
-    - inertia tensor should be calculated for all boxes (I = M * (side^2) / 6 * (3 dim Unity matrix))
-    - replace deltaTime in UpdateScene with the variable 
-    - rename box to parallelipiped?
+    - replace the constant: deltaTime in UpdateScene with the variable
+    - skybox draw function must be connected to changes in height / width! 
+          * in this line: glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)2520 / (float)1400, 0.1f, 100.0f);
+    - mouse click mode (change between select / shoot / etc.)
 */
+
 
 void threadTest();
 
 unsigned int loadTexture(const char *path);
 
 // settings
-const unsigned int SCR_WIDTH = 1400;
-const unsigned int SCR_HEIGHT = 1200;
+const unsigned int SCR_WIDTH = 2520;
+const unsigned int SCR_HEIGHT = 1400;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -88,7 +88,9 @@ vector<Object*> dbgObj;
 
 int main()
 {
-    GLFWwindow* window = glfw_init(&camera, SCR_WIDTH, SCR_HEIGHT);
+    auto scr_width  = SCR_WIDTH;
+    auto scr_height = SCR_HEIGHT;
+    GLFWwindow* window = glfw_init(&camera, &scr_width, &scr_height);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -101,7 +103,11 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
     glEnable(GL_BLEND);
+    glDepthFunc(GL_LESS);
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // command thread 
@@ -109,11 +115,6 @@ int main()
 
     // create instance of input processing
     InputProcess inputProcess(window, &camera);
-
-    // build and compile shaders
-    // -------------------------
-    Shader shader("../shaders/shader.vs", "../shaders/shader.fs");
-
 
     // add commands and put the interpreter in a new thread -> poll it in frame loop?
     // we should add a wrapper around the interpreter that handles commands as either sync or async
@@ -127,9 +128,8 @@ int main()
 
     
     // create a scene
-    SceneFactory sceneFactory;
-    std::cout << "Getting scene: \n";
-    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest3, shader);
+    SceneFactory sceneFactory(camera, scr_width, scr_height);
+    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest4);
     
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
     // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 
@@ -160,7 +160,7 @@ int main()
 
     // load textures
     // -------------
-    unsigned int transparentTexture = loadTexture("../textures/window.png");
+    // unsigned int transparentTexture = loadTexture("../textures/window.png");
 
     // transparent window locations
     // --------------------------------
@@ -176,8 +176,8 @@ int main()
 
     // shader configuration
     // --------------------
-    shader.use(); // if multiple shaders exists, they should be set to use in the render loop
-    shader.setInt("texture1", 0);
+    // shader.use(); // if multiple shaders exists, they should be set to use in the render loop
+    // shader.setInt("texture1", 0);
     float timeMultiplier = 1.0f; // speed time up or down
 
     // render loop
@@ -194,19 +194,6 @@ int main()
         // -----
         inputProcess.processAllInput(deltaTime);
 
-        if (inputProcess.keyActions.printDebug)
-        {
-            for (auto& v : dbgObj)
-            {
-                v->printObject();
-            }
-        }
-        if (inputProcess.keyActions.frameForward)
-        {
-            std::cout << "Frame forward was pressed\n";
-        }
-
-
         // sort the transparent windows before rendering
         // ---------------------------------------------
         std::map<float, glm::vec3> sorted;
@@ -219,18 +206,13 @@ int main()
         // render
         // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // draw objects
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 model = glm::mat4(1.0f);
-        shader.setMat4("projection", projection);
-        shader.setMat4("view", view);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        
         
         // only update frame if we want pause and no step frame forward
         bool pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
 
+        if      (inputProcess.keyActions.printDebug)     { scene.printInfoForSelected(); }
         if      (inputProcess.keyActions.fAction)        { scene.stupidDebug(); }
         if      (inputProcess.keyActions.keyUpAction)    {std::cout << "Up\n"; timeMultiplier *= 2; }
         else if (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
@@ -238,18 +220,19 @@ int main()
         // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!!!!!!
         // all objects are moved, drawn here
         // also, collisions are detected and calculated
+        
         scene.updateScene(0.0124 * timeMultiplier/* deltaTime */, pauseFrame);
         
         // windows (from furthest to nearest)
-        glBindVertexArray(transparentVAO);
-        glBindTexture(GL_TEXTURE_2D, transparentTexture);
-        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
-        {
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, it->second);
-            shader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
+        // glBindVertexArray(transparentVAO);
+        // glBindTexture(GL_TEXTURE_2D, transparentTexture);
+        // for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+        // {
+        //     model = glm::mat4(1.0f);
+        //     model = glm::translate(model, it->second);
+        //     shader.setMat4("model", model);
+        //     glDrawArrays(GL_TRIANGLES, 0, 6);
+        // }
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)

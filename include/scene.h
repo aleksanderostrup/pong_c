@@ -3,24 +3,46 @@
 #include "object.h"
 #include <map>
 #include <string>
-// #include <glm/glm.hpp>
-// #include <glm/gtc/matrix_transform.hpp>
-// #include <glm/gtc/type_ptr.hpp>
-// #include <glm/gtx/string_cast.hpp>
-// #include <stb_image.h>
-// #include <iostream>
+#include "../include/textureManager.h"
+#include "../include/camera.h"
+#include "../include/skybox.h"
 
 class Scene
 {
 public:
 
-  Scene(float gridsize)
+  Scene(float gridsize, Camera& camera, uint32_t& width, uint32_t& height)
+   : mSkybox(camera, width, height)
+   , mCamera(camera)
+   , mWidth(width)
+   , mHeight(height)
+   , mShader("../shaders/shader.vs", "../shaders/shader.fs")
+   , mShaderSingleColor("../shaders/shader.vs", "../shaders/singlecolorshader.fs")
   {
     this->gridsize = gridsize;
+    mShader.use();
+    mShader.setInt("texture1", 0);
+
+  }
+
+  Shader& getShader()
+  {
+    return mShader;
   }
 
   void updateScene(const float deltaTime, bool isPaused)
   {
+    glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
+    glm::mat4 view = mCamera.GetViewMatrix();
+
+    mShaderSingleColor.use();
+    mShaderSingleColor.setMat4("view", view);
+    mShaderSingleColor.setMat4("projection", projection);
+
+    mShader.use();
+    mShader.setMat4("projection", projection);
+    mShader.setMat4("view", view);
+
     size_t totalLoops = 0;
     if (!isPaused) 
     {
@@ -70,14 +92,6 @@ public:
             // move objects forward, but with only half the time step
             UpdatePos(updateTimeGran, isPaused);
             std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
-            // if (stupidDebugThingStopOnFirst)
-            // {
-            //   return;
-            // }
-            // if (breakNow)
-            // {
-            //   break;
-            // }
           }
           while ((colDetected = detectCollisions(kStopOnFirst)) && // keep dividing while we have a collision AND
                  (divDepth != divDepthMax));                       // not reached the max binary depth
@@ -122,18 +136,28 @@ public:
     }
     
     drawObjects();
+    drawLineTest();
+    mShader.use();
     drawDebugObject(); // TODO: implement more elegantly than there!
+    mShader.use();
+    drawOverlay();
+    
+
+    // draw skybox as last
+    mSkybox.draw();
   }
 
   void stupidDebug()
   {
-    stupidDebugThingStopOnFirst = !stupidDebugThingStopOnFirst;
+    // stupidDebugThingStopOnFirst = !stupidDebugThingStopOnFirst;
+    // std::cout << "Cam.. Pos: " << glm::to_string(mCamera.Position) << " Front: " << glm::to_string(mCamera.Front) << "\n";
+    selectNearestObjectPointedAt();
   }
 
 protected:
 
 public:
-  void addObject(Object* obj)
+  void addObject(Object* obj, TextureManager::EnumTexture textureEnum = TextureManager::kDan)
   {
     std::string concName;
     for (auto it = this->objects.begin() ; it != this->objects.end(); ++it)
@@ -144,6 +168,7 @@ public:
         exit(0);
       }
     }
+    obj->SetTextureId(textureEnum, &textureManager);
     objects.push_back(obj);
   }
 
@@ -151,6 +176,7 @@ public:
   {
     // FOR DEBUGGING - FIND MORE ELEGANT WAY TO DO THIS
     colDebugObject = obj;
+    colDebugObject->SetTextureId(TextureManager::kMetal, &textureManager);
   }
 
   void setColNormalDebugObject(std::vector<Object*>& obj, size_t index)
@@ -161,7 +187,17 @@ public:
       case 0: colNormalDebugObjectVector = obj;
       case 1: colNormalDebugObjectVector2 = obj;
     }
+  }
 
+  void printInfoForSelected()
+  {
+    std::cout << "\n----- ************************ -----\n"
+              <<   "----- Info for selected object -----\n"
+              <<   "----- ************************ -----\n";
+    for (auto& o : selectedObjects)
+    {
+      o->printObject();
+    }
   }
 
   
@@ -176,10 +212,18 @@ private:
 
   float                                      gridsize;
   std::vector<Object*>                       objects;
+  std::vector<Object*>                       selectedObjects;
   Object*                                    colDebugObject = nullptr;
   std::vector<Object*>                       colNormalDebugObjectVector;
   std::vector<Object*>                       colNormalDebugObjectVector2;
   std::map<std::string, sLastSeparatingAxis> lastSeparatingAxis;
+  TextureManager                             textureManager;
+  Skybox                                     mSkybox;
+  Camera&                                    mCamera;
+  uint32_t&                                  mWidth;
+  uint32_t&                                  mHeight;
+  Shader                                     mShader;
+  Shader                                     mShaderSingleColor;
 
   bool                                       stupidDebugThingStopOnFirst = false;          
 
@@ -188,7 +232,6 @@ private:
   {
     std::pair<std::map<std::string, sLastSeparatingAxis>::iterator, bool> retPair;
     retPair = lastSeparatingAxis.insert(std::pair<std::string, sLastSeparatingAxis>(concName, lsa));
-    std::cout << "Inserting LSA (key=" << concName << "): " << lsa.index << " = " << glm::to_string(lsa.normal) << "\n";
     if (retPair.second == false)  // if already inserted...
     {
       lastSeparatingAxis[concName] = lsa; // ...overwrite
@@ -296,20 +339,53 @@ private:
         o->updatePosition(deltaTime);
         o->updateRotation(deltaTime);
       }
-      o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
-      o->draw();
-      o->checkForErrors();
     }
   }
   
   void drawObjects()
   {
+    const float selectedScale = 0.97;
+    // glStencilMask(0x00); // make sure we don't update the stencil buffer while drawing the floor
+
+    glStencilFunc(GL_ALWAYS, 1, 0xFF); 
+    glStencilMask(0xFF); 
+    // scaled down FOR STENCIL / "SELECTED "
     for (auto& o : objects)
     {
+      if (o->isSelected())
+      {
+        o->recordScale(); // record scale before changing (restored below)
+        o->setRelativeScale(selectedScale); // shrink object a little to draw select stencil below
+        o->updateModel(); // update model to reflect scaling
+      }
       o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
-      o->draw();
+      o->ActivateTextureId(&textureManager);
+      o->draw(mShader);
       o->checkForErrors();
     }
+    
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilMask(0x00);
+    // glDisable(GL_DEPTH_TEST);
+    // switch to single color to draw selected objects select frame
+    mShaderSingleColor.use();
+
+    for (auto& o : objects)
+    {
+      if (o->isSelected())
+      {
+        o->restoreScale(); // restore object to original size
+        o->updateModel();
+        o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
+        // o->ActivateTextureId(&textureManager);
+        o->draw(mShaderSingleColor);
+        o->checkForErrors();
+      }
+    }
+    glStencilMask(0xFF);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glEnable(GL_DEPTH_TEST);
+
   }
 
   void drawDebugObject()
@@ -317,13 +393,106 @@ private:
     if (nullptr != colDebugObject)
     {
       colDebugObject->drawInit();
-      colDebugObject->draw();
+      colDebugObject->ActivateTextureId(&textureManager);
+      colDebugObject->draw(mShader);
       for (auto& pObj : colNormalDebugObjectVector)
-        pObj->draw();
+        pObj->draw(mShader);
       for (auto& pObj : colNormalDebugObjectVector2)
-        pObj->draw();
+        pObj->draw(mShader);
     }
   }
+
+  void drawOverlay()
+  {
+    static Shader s("../shaders/overlayshader.vs", "../shaders/overlayshader.fs");
+    static bool init = true;
+    static unsigned int overlayVAO;
+    static unsigned int overlayVBO;
+    if (init)
+    {
+      float scale = 0.005f;
+      const float overlayVertices[] = 
+      {
+        // positions          // texture Coords
+        -scale, -scale, -scale,  //0.0f, 0.0f,
+         scale, -scale, -scale,  //1.0f, 0.0f,
+         scale,  scale, -scale,  //1.0f, 1.0f,
+         scale,  scale, -scale,  //1.0f, 1.0f,
+        -scale,  scale, -scale,  //0.0f, 1.0f,
+        -scale, -scale, -scale   //0.0f, 0.0f,
+      };
+
+      // box VAO
+      glGenVertexArrays(1, &overlayVAO);
+      glGenBuffers(1, &overlayVBO);
+      glBindVertexArray(overlayVAO);
+      glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(overlayVertices), &overlayVertices, GL_STATIC_DRAW);
+      // position attribute
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+      // texture attribute
+      // glEnableVertexAttribArray(1);
+      // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+      init = false;
+    }
+
+    s.use();
+    glBindVertexArray(overlayVAO);
+	  glDrawArrays(GL_TRIANGLES, 0, 6);
+
+  }
+
+  void drawLineTest()
+  {
+    static Shader s("../shaders/lineshader.vs", "../shaders/overlayshader.fs");
+    static bool init = true;
+    static unsigned int lineVAO;
+    static unsigned int lineVBO;
+    const size_t itemsPerVertice = 3;
+    const size_t numOfVertices = 2;
+    if (init)
+    {
+      const float line[] = 
+      {
+        // positions  
+        0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+      };
+
+      static_assert(numOfVertices == (sizeof(line) / (sizeof(line[0]) * itemsPerVertice)));
+
+      // box VAO
+      glGenVertexArrays(1, &lineVAO);
+      glGenBuffers(1, &lineVBO);
+      glBindVertexArray(lineVAO);
+      glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(line), &line, GL_STATIC_DRAW);
+      // position attribute
+      glEnableVertexAttribArray(0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+      // texture attribute
+      // glEnableVertexAttribArray(1);
+      // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0); 
+      glBindVertexArray(0); 
+      init = false;
+    }
+
+    s.use();
+    glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
+    glm::mat4 view = mCamera.GetViewMatrix();
+
+    s.setMat4("model", objects[0]->GetModel());
+    s.setMat4("view", view);
+    s.setMat4("projection", projection);
+
+    glBindVertexArray(lineVAO);
+	  glDrawArrays(GL_LINE_STRIP, 0, numOfVertices);
+
+  }
+
 
   void stepBackObjects()
   {
@@ -332,4 +501,52 @@ private:
       o->restoreRecState();
     }
   }
+
+  // not completely finished - there are edge cases where we don't select the right element!
+  // (example: big object that is nearer, but has part of it behind the intended object, and the ray passing through this part)
+  void selectNearestObjectPointedAt()
+  {
+    using objDist = std::pair<Object*, float>;
+    std::vector<objDist> pointedAt;
+    glm::vec3& pRay = mCamera.Position;
+    glm::vec3& dRay = mCamera.Front; // must be normalized!
+    float minDist = INFINITY;
+    Object* objPointedAt;
+    // dRay = glm::normalize(dRay);
+    
+    for (auto& o : objects)
+    {
+      if (o->checkRayVsBoxCollision(pRay, dRay))
+      {
+        float dist = glm::length(pRay - o->getPosition());
+        // keep track of nearest (simple / naive version)
+        if (dist < minDist)
+        {
+          minDist = dist;
+          objPointedAt = o;
+        }
+      }
+    }
+
+
+    bool isSel = objPointedAt->isSelected();
+    objPointedAt->setIsSelected(!isSel); // toggle selection
+    if (isSel)
+    {
+      for (size_t cnt = 0; cnt < selectedObjects.size(); cnt++)
+      {
+        if (selectedObjects[cnt] == objPointedAt)
+        {
+          selectedObjects.erase (selectedObjects.begin() + cnt); // delete de-selected obj
+          break; // found, so exit
+        }
+      }
+    }
+    else 
+    {
+      selectedObjects.push_back(objPointedAt);
+    }
+  }
+
 };
+

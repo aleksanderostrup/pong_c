@@ -16,6 +16,7 @@ add_library(external_dependencies
 add_executable(pong3d 
     glad.c
     box.cpp
+    skybox.cpp
     cube.cpp
     plane.cpp
     main.cpp
@@ -23,6 +24,7 @@ add_executable(pong3d
     glfw_setup.cpp
     cmdInterpreter.cpp
     sceneFactory.cpp
+    textureManager.cpp
 )
 
 target_include_directories(pong3d

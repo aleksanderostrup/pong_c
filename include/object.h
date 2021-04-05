@@ -6,6 +6,8 @@
 #include <glm/gtc/type_ptr.hpp>
 // for debug / print
 #include <glm/gtx/string_cast.hpp>
+#include "../include/textureManager.h"
+#include "../include/shader_s.h"
 #include <stb_image.h>
 #include <iostream>
 #include <string>
@@ -39,6 +41,13 @@ typedef struct
         std::cout << "Error occured accessing sBoundBoxEdges[]. Exiting!" << std::endl;
         exit(0);
     }
+  }
+  void toString()
+  {
+    std::cout 
+      << "Ax:" << glm::to_string(Ax) << "\n"
+      << "Ay:" << glm::to_string(Ay) << "\n"
+      << "Az:" << glm::to_string(Az) << "\n";
   }
 } sBoundBoxEdges;
 
@@ -77,6 +86,7 @@ public:
 
   Object(glm::vec3 position, glm::vec3 scale, const char* name, float mass = 1.0f) :
     mScale             (scale),
+    mScaleRec          (scale),
     mInertiaTensor     (glm::mat3(1.0f)), // good for cubes, but must be overwritten for other objects
     mMass              (mass),
     mDebugOutputOn     (false),
@@ -94,13 +104,16 @@ protected:
   sObjectState    mState;
   sObjectState    mRecState;
   glm::vec3       mScale;
+  glm::vec3       mScaleRec;
   glm::mat4       mModel;
   glm::mat3       mInertiaTensor;
   const float     mMass;
   bool            mDebugOutputOn;
   bool            mIgnoreCollision;
+  bool            mIsSelected = false;
   const char*     mName;
-  sBoundBoxEdges* mBoundBoxEdges      {nullptr};
+  sBoundBoxEdges* mBoundBoxEdges      {nullptr}; // optional ? - for selecting we really need this for now!
+  TextureManager::EnumTexture mTextureEnum{TextureManager::kInvalid};
 
   // utility function for loading a 2D texture from file
   // ---------------------------------------------------
@@ -139,11 +152,11 @@ protected:
     }
 
     return textureID;
-}
+  }
 
 public:
   // pure abstracts
-  virtual void draw() = 0;
+  virtual void draw(Shader& shader) = 0;
   virtual void drawInit() = 0;
   virtual float containingRadius() = 0;
 
@@ -201,7 +214,7 @@ public:
     modelFormatted = std::regex_replace(modelFormatted, re,      replStr);
     modelFormatted = std::regex_replace(modelFormatted, reStart, replStrStart);
 
-    std::string boundBoxStr = "";
+    std::string boundBoxStr = "\n";
     if (mBoundBoxEdges)
     {
       boundBoxStr += "Ax: " + glm::to_string(mBoundBoxEdges->Ax) + "\n";
@@ -218,7 +231,7 @@ public:
               << "mass: "             <<  mMass                                   << "\n"
               << "model: "            <<  modelFormatted                          << "\n"
               << "debugOutputOn: "    <<  mDebugOutputOn                          << "\n"
-              << "boundbox: "         <<  boundBoxStr                             << "\n"
+              << "boundbox:\n"        <<  boundBoxStr                             << "\n"
               << std::endl;
   }
 
@@ -266,6 +279,21 @@ public:
   void setScale(const glm::vec3& scale)
   {
     mScale = scale;
+  }
+
+  void setRelativeScale(const float scale)
+  {
+    mScale *= scale;
+  }
+
+  void recordScale()
+  {
+    mScaleRec = mScale;
+  }
+
+  void restoreScale()
+  {
+    mScale = mScaleRec;
   }
 
   void setRotationVelocity(const glm::vec3& rotationVelocity)
@@ -739,19 +767,6 @@ public:
     {
       if (R[n] > (R0[n] + R1[n]))
       {
-        // debug output
-        // std::cout.precision(3);
-        // std::cout << "Testing for " << A->mName << "(=A) vs. " << B->mName << "(=B)" << std::endl;
-        // std::cout <<  "R0\tR1\tR\tR0+R1: n=" << n << "\n" 
-        //           <<  R0[n]  << "\t" << R1[n]  << "\t" << R[n] << "\t" << R0[n] + R1[n] << "\n"
-        //           <<  "C0 "  << glm::to_string(C0) << "\n"
-        //           <<  "C1 "  << glm::to_string(C1) << "\n"
-        //           <<  "D "   << glm::to_string(D)  << "\n"
-        //           <<  "a_i "   << glm::to_string(a_i)  << "\n"
-        //           <<  "b_i "   << glm::to_string(b_i)  << "\n"
-        //           <<  "C_ij "   << glm::to_string(C_ij)  << "\n"
-        //           // <<  "Alt R0: " << debugFunc(L[n], L[0], L[1], L[2], a_i) << "\n"
-        //           <<  "Projected axis: " << glm::to_string(L[n]) << "\n" << std::endl;
         lsa->normal = L[n];
         lsa->index = n;
         return false;
@@ -835,6 +850,51 @@ public:
 
   }
 
+  bool checkRayVsBoxCollision(glm::vec3& pRay, glm::vec3& dRay)
+  {
+    UpdateBoundBox();
+    glm::vec3 PmC = pRay - mState.position;
+    float DdU[3];
+    float ADdU[3];
+    float PmCdU[3];
+    float APmCdU[3];
+    // notation from https://www.geometrictools.com/Documentation/IntersectionLineBox.pdf
+    glm::vec3 a_i     = 0.5f * mScale; // extent
+    sBoundBoxEdges& U = *mBoundBoxEdges;
+    
+    // The ray = specific tests .
+    for ( int i = 0 ; i < 3 ; ++i )
+    {
+      DdU[i]    = glm::dot(dRay, U[i]);
+      ADdU[i]   = glm::abs(DdU[i]);
+      PmCdU[i]  = glm::dot(PmC, U[i]);
+      APmCdU[i] = glm::abs(PmCdU[i]);
+      if (APmCdU[i] > a_i[i] && PmCdU[i] * DdU[i] >= 0)
+      {
+      return false;
+      }
+    }
+    // The line = specific tests.
+    glm::vec3 DxPmC = glm::cross (dRay, PmC);
+    float ADxPmCdU[3];
+    ADxPmCdU[0] = glm::abs(glm::dot(DxPmC, U[0] ));
+    if (ADxPmCdU[0] > a_i[1] * ADdU[2] + a_i[2] * ADdU[1] )
+    {
+      return false;
+    }
+    ADxPmCdU[1] = glm::abs(glm::dot(DxPmC, U[1] ));
+    if (ADxPmCdU[1] > a_i[0] * ADdU[2] + a_i[2] * ADdU[0] )
+    {
+      return false;
+    }
+    ADxPmCdU[2] = glm::abs(glm::dot(DxPmC, U[2] ));
+    if (ADxPmCdU[2] > a_i[0] * ADdU[1] + a_i[1] * ADdU[0] )
+    {
+      return false;
+    }
+    return true;
+  }
+
   const char* getName()
   {
     return mName;
@@ -850,6 +910,36 @@ public:
     mState = mRecState;
   }
 
+  bool isSelected()
+  {
+    return mIsSelected;
+  }
+
+  void setIsSelected(bool selected)
+  {
+    mIsSelected = selected;
+  }
+
+  auto ActivateTextureId(TextureManager* textureManager)
+  {
+    return textureManager->ActivateTexture(mTextureEnum);
+  }
+
+  auto SetTextureId(TextureManager::EnumTexture textureEnum, TextureManager* textureManager)
+  {
+    if (mTextureEnum != TextureManager::kInvalid)
+    {
+      textureManager->DeregisterTexture(textureEnum);
+    }
+    mTextureEnum = textureEnum;
+    return textureManager->RegisterTexture(textureEnum);
+  }
+
+  glm::mat4& GetModel()
+  {
+    return mModel;
+  }
+
   protected:
     glm::mat3 getRotationMatrix()
     {
@@ -863,6 +953,7 @@ public:
     }
 
   private:
+
     virtual void UpdateBoundBox() = 0;
 
     glm::mat3 getRotatedTensor()

@@ -9,5 +9,5 @@ class Cube : public Box
 {
   public:
 
-    Cube(glm::vec3 position, float scale, Shader* shader, const char* name, float mass = 1.0f);
+    Cube(glm::vec3 position, float scale, const char* name, float mass = 1.0f);
 };

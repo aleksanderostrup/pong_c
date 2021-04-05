@@ -14,17 +14,16 @@ class Box : public Object
       kMetal  = 2,
     };
 
-    Box(glm::vec3 position, glm::vec3 scale, Shader* shader, const char* name, float mass=1.0f);
+    Box(glm::vec3 position, glm::vec3 scale, const char* name, float mass=1.0f);
     ~Box();
 
-    void  drawInit();
-    void  draw();
-    void  UpdateBoundBox();
-    float containingRadius();
-    bool  SetTexture(EnumTexture texture);
+    void          drawInit();
+    void          draw(Shader& shader);
+    void          UpdateBoundBox();
+    virtual float containingRadius();
+    bool          SetTexture(EnumTexture texture);
 
   private:
-    Shader* mShader;
 
     void CreateBoundBox();
 };

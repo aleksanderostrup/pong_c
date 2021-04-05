@@ -6,6 +6,8 @@ static Camera*     _camera = nullptr;
 static float       _lastX;
 static float       _lastY;
 static bool        _firstMouse = true;
+static uint32_t*   _width_private;
+static uint32_t*   _height_private;
 
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -15,6 +17,8 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+    *_width_private  = width;
+    *_height_private = height;
 }
 
 // glfw: whenever the mouse moves, this callback is called
@@ -44,15 +48,18 @@ static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     _camera->ProcessMouseScroll(yoffset);
 }
 
-GLFWwindow* glfw_init(Camera* camera, unsigned int scr_width, unsigned int scr_height)
+GLFWwindow* glfw_init(Camera* camera, uint32_t* scr_width, uint32_t* scr_height)
 {
     _camera = camera;
-    _lastX = (float)scr_width / 2.0;
-    _lastY = (float)scr_height / 2.0;
+    _lastX = (float)*scr_width / 2.0;
+    _lastY = (float)*scr_height / 2.0;
+
+    _width_private  = scr_width;
+    _height_private = scr_height;
 
     // glfw: initialize and configure
     // ------------------------------
-    if (!glfwInit()) 
+    if (!glfwInit())
     {
         std::cout << "Failed to init GLFW" << std::endl;
     }
@@ -62,7 +69,7 @@ GLFWwindow* glfw_init(Camera* camera, unsigned int scr_width, unsigned int scr_h
 
     // glfw window creation
     // --------------------
-    _window = glfwCreateWindow(scr_width, scr_height, "Aleks Physics Engine", NULL, NULL);
+    _window = glfwCreateWindow(*scr_width, *scr_height, "Aleks Physics Engine", NULL, NULL);
     if (_window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;

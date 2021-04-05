@@ -5,11 +5,11 @@ static unsigned int planeVAO, planeVBO;
 // this should be selectable via a map
 static unsigned int planeTexture;
 
-Plane::Plane(glm::vec3 position, glm::vec2 xyscale, Shader* shader,const char* name, float mass) : 
+Plane::Plane(glm::vec3 position, glm::vec2 xyscale, const char* name, float mass) : 
   Object(position, glm::vec3(xyscale.x, 1.0f, xyscale.y), name, mass)
 {
-  this->shader = shader;
-  this->updateModel();
+
+  updateModel();
   noOfPlanes++;
   mIgnoreCollision = true;
 
@@ -66,13 +66,13 @@ void Plane::drawInit()
   glBindVertexArray(planeVAO);
 }
 
-void Plane::draw()
+void Plane::draw(Shader& shader)
 {
   glBindTexture(GL_TEXTURE_2D, planeTexture);
   // model = glm::mat4(1.0f);
   // MODEL CAN BE SCALED - FIND OUT THE BEST WAY TO DO THIS -> MAYBE HANDLE THIS IN object.h, like with Box
   // model = glm::scale(model, glm::vec3(10.0f));
-  shader->setMat4("model", mModel);
+  shader.setMat4("model", mModel);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
