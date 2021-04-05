@@ -1,0 +1,42 @@
+[
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-gcc-9  -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/glad.c.o   -c /home/alek/eclipse-workspace/pong_3d/src/glad.c",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/glad.c"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/box.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/box.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/box.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/cube.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/cube.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/cube.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/plane.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/plane.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/plane.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/main.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/main.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/main.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/inputprocess.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/inputprocess.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/inputprocess.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include -I/home/alek/eclipse-workspace/pong_3d/src/../include/assimp -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -Wall -o CMakeFiles/pong3d.dir/glfw_setup.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/glfw_setup.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/glfw_setup.cpp"
+},
+{
+  "directory": "/home/alek/eclipse-workspace/pong_3d/include/build",
+  "command": "/bin/x86_64-linux-gnu-g++-9   -I/home/alek/eclipse-workspace/pong_3d/src/../include/glm  -g   -o CMakeFiles/external_dependencies.dir/std_image.cpp.o -c /home/alek/eclipse-workspace/pong_3d/src/std_image.cpp",
+  "file": "/home/alek/eclipse-workspace/pong_3d/src/std_image.cpp"
+}
+]

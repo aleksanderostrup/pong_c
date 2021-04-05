@@ -1,2 +1,5 @@
 /pong3d
 /Makefile
+/CMakeCache.txt
+/compile_commands.json
+*.a
