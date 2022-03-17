@@ -6,6 +6,38 @@
 #include "../include/textureManager.h"
 #include "../include/camera.h"
 #include "../include/skybox.h"
+#include "../include/line.h"
+
+struct ColPointDbg
+{
+  static const size_t frameCntInit = 5;
+
+  ColPointDbg(Camera& camera)
+    : mColVec(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 3.0f, camera)
+  {}
+  
+  size_t    mFrameCnt = 0;
+  Line      mColVec;
+  
+  /* ADD SETLENGTH() FNC? */
+
+  void setColPoint(glm::vec3& p, glm::vec3& dir)
+  {
+    mColVec.setPosition(p);
+    mColVec.setDirection(dir);
+    mFrameCnt = frameCntInit;
+  }
+
+  void draw(glm::mat4& projection, bool isPaused)
+  {
+    if (mFrameCnt)
+    {
+      mColVec.draw(nullptr, projection);
+      if (!isPaused)
+        mFrameCnt--;
+    }
+  }
+};
 
 class Scene
 {
@@ -18,6 +50,8 @@ public:
    , mHeight(height)
    , mShader("../shaders/shader.vs", "../shaders/shader.fs")
    , mShaderSingleColor("../shaders/shader.vs", "../shaders/singlecolorshader.fs")
+   , mColPointDbg(camera)
+  //  , mLine(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f, camera)
   {
     this->gridsize = gridsize;
     mShader.use();
@@ -136,7 +170,7 @@ public:
     }
     
     drawObjects();
-    drawLineTest();
+    mColPointDbg.draw(projection, isPaused);
     mShader.use();
     drawDebugObject(); // TODO: implement more elegantly than there!
     mShader.use();
@@ -224,6 +258,8 @@ private:
   uint32_t&                                  mHeight;
   Shader                                     mShader;
   Shader                                     mShaderSingleColor;
+  ColPointDbg                                mColPointDbg;
+  // Line                                       mLine;
 
   bool                                       stupidDebugThingStopOnFirst = false;          
 
@@ -240,6 +276,7 @@ private:
 
   void DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(glm::vec3& colPoint, glm::vec3& colNormal)
   {
+    mColPointDbg.setColPoint(colPoint, colNormal);
     if (colDebugObject != nullptr)
     {
       colDebugObject->setPosition(colPoint);
@@ -442,57 +479,6 @@ private:
 	  glDrawArrays(GL_TRIANGLES, 0, 6);
 
   }
-
-  void drawLineTest()
-  {
-    static Shader s("../shaders/lineshader.vs", "../shaders/overlayshader.fs");
-    static bool init = true;
-    static unsigned int lineVAO;
-    static unsigned int lineVBO;
-    const size_t itemsPerVertice = 3;
-    const size_t numOfVertices = 2;
-    if (init)
-    {
-      const float line[] = 
-      {
-        // positions  
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-      };
-
-      static_assert(numOfVertices == (sizeof(line) / (sizeof(line[0]) * itemsPerVertice)));
-
-      // box VAO
-      glGenVertexArrays(1, &lineVAO);
-      glGenBuffers(1, &lineVBO);
-      glBindVertexArray(lineVAO);
-      glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-      glBufferData(GL_ARRAY_BUFFER, sizeof(line), &line, GL_STATIC_DRAW);
-      // position attribute
-      glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-      // texture attribute
-      // glEnableVertexAttribArray(1);
-      // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-
-      glBindBuffer(GL_ARRAY_BUFFER, 0); 
-      glBindVertexArray(0); 
-      init = false;
-    }
-
-    s.use();
-    glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
-    glm::mat4 view = mCamera.GetViewMatrix();
-
-    s.setMat4("model", objects[0]->GetModel());
-    s.setMat4("view", view);
-    s.setMat4("projection", projection);
-
-    glBindVertexArray(lineVAO);
-	  glDrawArrays(GL_LINE_STRIP, 0, numOfVertices);
-
-  }
-
 
   void stepBackObjects()
   {

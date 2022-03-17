@@ -26,6 +26,8 @@
 
 /*
 todo:
+    - scene recording with events and specific times (including slo-mo)
+    - possibility to play "background" music (direction? Stereo? Surround?)
     - arrow object to attach to other objects to debug vectors :D
     - threading
         * have an input thread running or just wrap in class and poll?

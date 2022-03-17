@@ -16,6 +16,7 @@ add_library(external_dependencies
 add_executable(pong3d 
     glad.c
     box.cpp
+    line.cpp
     skybox.cpp
     cube.cpp
     plane.cpp

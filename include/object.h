@@ -489,8 +489,10 @@ public:
     const Object* B = obj;
     EnumCollisionType collisionType = getCollisionType(C_ij, lsa);
 
-    glm::vec3 a_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
-    glm::vec3 b_i = 0.5f * B->mScale;
+    // glm::vec3 a_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
+    // glm::vec3 b_i = 0.5f * B->mScale;
+    glm::vec3 b_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
+    glm::vec3 a_i = 0.5f * B->mScale;
     glm::vec3 C0 = A->mState.position; // center of A
     glm::vec3 C1 = B->mState.position; // center of B
     glm::vec3 D  = C1 - C0; // [DCD p. 6]
