@@ -1,4 +1,4 @@
-#include "../include/skybox.h"
+#include "skybox.h"
 #include <cmath>
 #include <vector>
 

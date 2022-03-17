@@ -1,4 +1,4 @@
-#include "../include/line.h"
+#include "line.h"
 #include <cmath>
 
 static int noOfLines = 0;

@@ -1,4 +1,4 @@
-#include "../include/cmdInterpreter.h"
+#include "cmdInterpreter.h"
 #include <utility>
 #include <iostream>
 

@@ -6,17 +6,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "../include/shader_s.h"
-#include "../include/camera.h"
-#include "../include/model.h"
-#include "../include/cube.h"
-#include "../include/skybox.h"
-#include "../include/plane.h"
-#include "../include/scene.h"
-#include "../include/sceneFactory.h"
-#include "../include/cmdInterpreter.h"
-#include "../include/inputprocess.h"
-#include "../include/glfw_setup.h"
+#include "shader_s.h"
+#include "camera.h"
+#include "model.h"
+#include "cube.h"
+#include "skybox.h"
+#include "plane.h"
+#include "scene.h"
+#include "sceneFactory.h"
+#include "cmdInterpreter.h"
+#include "inputprocess.h"
+#include "glfw_setup.h"
 
 #include <iostream>
 #include <vector>
@@ -27,6 +27,7 @@
 /*
 todo:
     - scene recording with events and specific times (including slo-mo)
+    - enum -> enum class
     - possibility to play "background" music (direction? Stereo? Surround?)
     - arrow object to attach to other objects to debug vectors :D
     - threading
@@ -71,10 +72,10 @@ todo:
 */
 
 
-void threadTest();
+// void threadTest();
 
-unsigned int loadTexture(const char *path);
-
+// unsigned int loadTexture(const char *path);
+// TODO: settings should be in separate object!
 // settings
 const unsigned int SCR_WIDTH = 2520;
 const unsigned int SCR_HEIGHT = 1400;
@@ -131,7 +132,7 @@ int main()
     
     // create a scene
     SceneFactory sceneFactory(camera, scr_width, scr_height);
-    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest4);
+    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest3);
     
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
     // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 
@@ -250,54 +251,54 @@ int main()
 
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
-unsigned int loadTexture(char const * path)
-{
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
+// unsigned int loadTexture(char const * path)
+// {
+//     unsigned int textureID;
+//     glGenTextures(1, &textureID);
 
-    int width, height, nrComponents;
-    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
-    if (data)
-    {
-        GLenum format;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
+//     int width, height, nrComponents;
+//     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+//     if (data)
+//     {
+//         GLenum format;
+//         if (nrComponents == 1)
+//             format = GL_RED;
+//         else if (nrComponents == 3)
+//             format = GL_RGB;
+//         else if (nrComponents == 4)
+//             format = GL_RGBA;
 
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
+//         glBindTexture(GL_TEXTURE_2D, textureID);
+//         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+//         glGenerateMipmap(GL_TEXTURE_2D);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
+//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        stbi_image_free(data);
-    }
-    else
-    {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
-    }
+//         stbi_image_free(data);
+//     }
+//     else
+//     {
+//         std::cout << "Texture failed to load at path: " << path << std::endl;
+//         stbi_image_free(data);
+//     }
 
-    return textureID;
-}
+//     return textureID;
+// }
 
-void threadTest()
-{
-    struct timespec requested_time;
-    requested_time.tv_sec = 2;
-    requested_time.tv_nsec = 0L;
-    int i;
-    while (1)
-    {
-        std::cin >> i;
-        nanosleep(&requested_time, NULL);
-        std::cout << i << "\n" << std::endl;
+// void threadTest()
+// {
+//     struct timespec requested_time;
+//     requested_time.tv_sec = 2;
+//     requested_time.tv_nsec = 0L;
+//     int i;
+//     while (1)
+//     {
+//         std::cin >> i;
+//         nanosleep(&requested_time, NULL);
+//         std::cout << i << "\n" << std::endl;
         
-    }
-}
+//     }
+// }

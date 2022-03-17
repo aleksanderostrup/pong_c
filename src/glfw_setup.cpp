@@ -1,4 +1,4 @@
-#include "../include/glfw_setup.h"
+#include "glfw_setup.h"
 #include <iostream>
 
 static GLFWwindow* _window = nullptr;

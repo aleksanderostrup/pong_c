@@ -1,8 +1,8 @@
-#include "../include/sceneFactory.h"
-#include "../include/object.h"
-#include "../include/plane.h"
-#include "../include/box.h"
-#include "../include/cube.h"
+#include "sceneFactory.h"
+#include "object.h"
+#include "plane.h"
+#include "box.h"
+#include "cube.h"
 
 SceneFactory::SceneFactory(Camera& camera, uint32_t& width, uint32_t& height)
  :  mCamera(camera)
@@ -34,6 +34,8 @@ static inline void AddDebugObjects(Scene& scene, Shader& shader)
 
 static void PopulateSceneTest1(Scene& scene)
 {
+    // TODO: builder pattern for these objects and then add them directly
+    // TODO: also, they should be pointers!
     /* Object creation */
     auto* cube1 = new  Cube (glm::vec3( 0.0f, 0.0f,  0.0f),     1.0f, "cube1", 1.0f);
     auto* cube2 = new  Box  (glm::vec3( 30.0f, 0.0f,  0.0f),    glm::vec3( 2.0f, 1.0f,  1.0f), "cube2");

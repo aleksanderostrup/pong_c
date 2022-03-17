@@ -1,4 +1,4 @@
-#include "../include/plane.h"
+#include "plane.h"
 
 int noOfPlanes = 0;
 static unsigned int planeVAO, planeVBO;

@@ -6,8 +6,8 @@
 #include <glm/gtc/type_ptr.hpp>
 // for debug / print
 #include <glm/gtx/string_cast.hpp>
-#include "../include/textureManager.h"
-#include "../include/shader_s.h"
+#include "textureManager.h"
+#include "shader_s.h"
 #include <stb_image.h>
 #include <iostream>
 #include <string>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "scene.h"
-#include "../include/shader_s.h"
+#include "shader_s.h"
 
 class SceneFactory
 {

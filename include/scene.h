@@ -1,12 +1,12 @@
 #pragma once
 
-#include "object.h"
 #include <map>
 #include <string>
-#include "../include/textureManager.h"
-#include "../include/camera.h"
-#include "../include/skybox.h"
-#include "../include/line.h"
+#include "object.h"
+#include "textureManager.h"
+#include "camera.h"
+#include "skybox.h"
+#include "line.h"
 
 struct ColPointDbg
 {

@@ -1,4 +1,4 @@
-#include "../include/inputprocess.h"
+#include "inputprocess.h"
 #include <string>
 
 InputProcess::InputProcess(GLFWwindow* window, Camera* camera) :
@@ -14,14 +14,7 @@ void InputProcess::handleKeyPressedFirstTime(bool& key, bool& action, int glfwKe
     if (!key) 
     {
       key = true;
-      if (action)
-      {
-        action = false;
-      }
-      else 
-      {
-        action = true;
-      }
+      action = !action;
     }
     else 
     {

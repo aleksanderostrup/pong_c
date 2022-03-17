@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <stdint.h>
 
 /* 
     TextureManager manages textures globally for one GPU.
@@ -11,7 +12,7 @@ class TextureManager
 {
   public:
 
-    typedef uint32_t TextureId; // USE GLuint ?
+    using TextureId = uint32_t; // USE GLuint ?
     enum EnumTexture
     {
       kInvalid      = 0,

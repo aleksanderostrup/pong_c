@@ -1,3 +1,5 @@
 *.make
 *.mk
 *.cmake
+*.o
+build
