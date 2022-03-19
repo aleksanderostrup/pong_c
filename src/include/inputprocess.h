@@ -12,6 +12,7 @@ class InputProcess
       bool printDebug    = false;
       bool frameForward  = false;
       bool fAction       = false;
+      bool tAction       = false;
       bool keyUpAction   = false;
       bool keyDownAction = false;
     } keyActions;
@@ -35,6 +36,7 @@ class InputProcess
       bool isFrameForwardPressed = false;
       bool isFrameFPressed       = false;
       bool isFPressed            = false;
+      bool isTPressed            = false;
       bool isUpKeyPressed        = false;
       bool isDownKeyPressed      = false;
 

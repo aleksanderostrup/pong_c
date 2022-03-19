@@ -13,6 +13,7 @@ class SceneFactory
         kSceneTest2 = 2,
         kSceneTest3 = 3,
         kSceneTest4 = 4, // big box from beneath
+        kSceneTest5 = 5, // only cubes to check for proper beheaviour
     };
     
     SceneFactory(Camera& camera, uint32_t& width, uint32_t& height);

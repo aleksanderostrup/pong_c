@@ -257,6 +257,50 @@ static void PopulateSceneTest4(Scene& scene)
     
 }
 
+
+static void PopulateSceneTest5(Scene& scene)
+{
+    float s = 1.25f;
+    // float s2 = 2 * s - 0.2f;
+    float ys = 0.0f;
+    /* Object creation */
+    // auto* smasher = new  Box  (glm::vec3( 30.0f, 0.0f,  0.0f), glm::vec3( 2.0f, 1.0f,  1.0f), "smasher");
+    auto* smasher       = new  Cube (glm::vec3( -10.0f, ys,  0.0f), 1.0f, "smasher", 1.0f);
+    auto* smasherRev    = new  Cube (glm::vec3( 12.0f, ys,  0.0f), 1.0f, "smasherRev", 1.0f);
+    auto* cube3         = new  Cube (glm::vec3( -s,   ys,  -s),   1.0f, "cube3", 1.0f);
+    auto* cube4         = new  Cube (glm::vec3( -s,   ys,   s),   1.0f, "cube4", 1.0f);
+    auto* cube5         = new  Cube (glm::vec3( -s,   ys,  0.0f), 1.0f, "cube5", 1.0f);
+    // auto* cube6   = new  Cube (glm::vec3( -s2,  ys,  -s2),  1.0f, "cube6", 1.0f);
+    // auto* cube7   = new  Cube (glm::vec3( -s2,  ys,  -s),   1.0f, "cube7", 1.0f);
+    // auto* cube8   = new  Cube (glm::vec3( -s2,  ys,   s),   1.0f, "cube8", 1.0f);
+    // auto* cube9   = new  Cube (glm::vec3( -s2,  ys,   s2),  1.0f, "cube9", 1.0f);
+    
+    // auto* hugeCube = new  Cube (glm::vec3( 0.0f, -30.0f,  0.65f),  10.0f, "hugeCube", 20.0f);
+
+
+    // smasher->setRotation(-1.3f * glm::vec3( 0.1f, 0.1f, 0.1f));
+    // smasher->setRotation(1.3f * glm::vec3( 0.1f, 0.1f, 0.1f));
+    smasher->setRotationVelocity(10.8f * glm::vec3( 0.0f, 0.0f, 1.0f));
+    smasher->setVelocity(glm::vec3(25.32f, 0.0f, 0.0f));
+    smasherRev->setRotationVelocity(10.8f * glm::vec3( 0.0f, 0.0f, 1.0f));
+    smasherRev->setVelocity(glm::vec3(-20.32f, 0.0f, 0.0f));
+    // hugeCube->setVelocity(glm::vec3(0.0f, 10.0f, 0.0f));
+    // hugeCube->setRotation(1.3f * glm::vec3( 0.1f, 0.1f, 0.1f));
+    
+    
+    scene.addObject(smasher);
+    scene.addObject(smasherRev);
+    scene.addObject(cube3);
+    scene.addObject(cube4);
+    scene.addObject(cube5);
+    // scene.addObject(cube6);
+    // scene.addObject(cube7);
+    // scene.addObject(cube8, TextureManager::kRedWindow);
+    // scene.addObject(cube9, TextureManager::kMetal);
+    // scene.addObject(hugeCube, TextureManager::kMetal);
+    
+}
+
 Scene SceneFactory::GetScene(EnumScene enumScene/* , Shader& shader */)
 {
     // create a scene
@@ -268,6 +312,7 @@ Scene SceneFactory::GetScene(EnumScene enumScene/* , Shader& shader */)
         case kSceneTest2: PopulateSceneTest2(scene); break;
         case kSceneTest3: PopulateSceneTest3(scene); break;
         case kSceneTest4: PopulateSceneTest4(scene); break;
+        case kSceneTest5: PopulateSceneTest5(scene); break;
     }
     // handle debug objects adding centrally
     AddDebugObjects(scene, scene.getShader());

@@ -188,6 +188,19 @@ public:
     selectNearestObjectPointedAt();
   }
 
+  void printSummedVelAndRot() const
+  {
+    glm::vec3 totalVel(0.0f);
+    glm::vec3 totalRotVel(0.0f);
+    for (auto const& o : objects)
+    {
+      totalVel    += o->getVelocity();
+      totalRotVel += o->getRotationVelocity();
+    }
+    std::cout << "Total vel     = " << glm::to_string(totalVel)     << "|" << std::to_string(glm::length(totalVel))     << "|\n";
+    std::cout << "Total rot_vel = " << glm::to_string(totalRotVel)  << "|" << std::to_string(glm::length(totalRotVel))  << "|\n";
+  }
+
 protected:
 
 public:
@@ -317,7 +330,7 @@ private:
     glm::mat3 C_ij;
     /* 
       OPTIMIZE:
-      record the last 2 objects that collided, and start with them major for speed up
+      record the last 2 objects that collided, and start with them for major speed up
       (at least in case we're in scenario: stopWhen = kStopOnFirst)
     */
 

@@ -316,6 +316,11 @@ public:
     return mState.velocity;
   }
 
+  glm::vec3 getRotationVelocity() const
+  {
+    return mState.rotationVelocity;
+  }
+
   void setDebugInfo(bool on)
   {
 

@@ -63,6 +63,7 @@ void InputProcess::processKeyboardInput(float deltaTime)
   handleKeyPressedFirstTime(keysPressed.isPrintDbgPressed,      keyActions.printDebug,    GLFW_KEY_P);
   handleKeyPressedFirstTime(keysPressed.isFrameForwardPressed,  keyActions.frameForward,  GLFW_KEY_RIGHT);
   handleKeyPressedFirstTime(keysPressed.isFPressed,             keyActions.fAction,       GLFW_KEY_F);
+  handleKeyPressedFirstTime(keysPressed.isTPressed,             keyActions.tAction,       GLFW_KEY_T);
   handleKeyPressedFirstTime(keysPressed.isUpKeyPressed,         keyActions.keyUpAction,   GLFW_KEY_UP);
   handleKeyPressedFirstTime(keysPressed.isDownKeyPressed,       keyActions.keyDownAction, GLFW_KEY_DOWN);
   

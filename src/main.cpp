@@ -27,9 +27,11 @@
 /*
 todo:
     - scene recording with events and specific times (including slo-mo)
+    TODO: record all collision data entering a collision that does not conserve velocity + rotation momentum OR does not converge
+    TODO: then we can play those collisions back and recreate the 
     - enum -> enum class
     - possibility to play "background" music (direction? Stereo? Surround?)
-    - arrow object to attach to other objects to debug vectors :D
+    - arrow object to attach to other objects to debug vectors
     - threading
         * have an input thread running or just wrap in class and poll?
     - audio from https://openal.org/  [openGL like API with 3D sound]
@@ -72,7 +74,6 @@ todo:
 */
 
 
-// void threadTest();
 
 // unsigned int loadTexture(const char *path);
 // TODO: settings should be in separate object!
@@ -132,7 +133,7 @@ int main()
     
     // create a scene
     SceneFactory sceneFactory(camera, scr_width, scr_height);
-    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest3);
+    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest5);
     
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
     // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 
@@ -217,6 +218,7 @@ int main()
 
         if      (inputProcess.keyActions.printDebug)     { scene.printInfoForSelected(); }
         if      (inputProcess.keyActions.fAction)        { scene.stupidDebug(); }
+        if      (inputProcess.keyActions.tAction)        { scene.printSummedVelAndRot(); }
         if      (inputProcess.keyActions.keyUpAction)    {std::cout << "Up\n"; timeMultiplier *= 2; }
         else if (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
 
@@ -247,58 +249,3 @@ int main()
     glfwTerminate();
     return 0;
 }
-
-
-// utility function for loading a 2D texture from file
-// ---------------------------------------------------
-// unsigned int loadTexture(char const * path)
-// {
-//     unsigned int textureID;
-//     glGenTextures(1, &textureID);
-
-//     int width, height, nrComponents;
-//     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
-//     if (data)
-//     {
-//         GLenum format;
-//         if (nrComponents == 1)
-//             format = GL_RED;
-//         else if (nrComponents == 3)
-//             format = GL_RGB;
-//         else if (nrComponents == 4)
-//             format = GL_RGBA;
-
-//         glBindTexture(GL_TEXTURE_2D, textureID);
-//         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-//         glGenerateMipmap(GL_TEXTURE_2D);
-
-//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
-//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-//         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-//         stbi_image_free(data);
-//     }
-//     else
-//     {
-//         std::cout << "Texture failed to load at path: " << path << std::endl;
-//         stbi_image_free(data);
-//     }
-
-//     return textureID;
-// }
-
-// void threadTest()
-// {
-//     struct timespec requested_time;
-//     requested_time.tv_sec = 2;
-//     requested_time.tv_nsec = 0L;
-//     int i;
-//     while (1)
-//     {
-//         std::cin >> i;
-//         nanosleep(&requested_time, NULL);
-//         std::cout << i << "\n" << std::endl;
-        
-//     }
-// }

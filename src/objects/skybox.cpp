@@ -26,6 +26,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
         {
             std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
             stbi_image_free(data);
+            exit(1);
         }
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -47,10 +48,9 @@ Skybox::Skybox(Camera& camera, uint32_t& width, uint32_t& height)
 {
   assert(skyboxExits == false);
   skyboxExits = true; // only allow one skybox to exist
-  
   mShader = new Shader("../shaders/SkyboxShader.vs", "../shaders/SkyboxShader.fs");
     float skyboxVertices[] = {
-        // positions          
+        // positions          a
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
