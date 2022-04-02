@@ -21,7 +21,7 @@ Box::Box(glm::vec3 position, glm::vec3 scale, const char* name, float mass) :
   Object(position, scale, name, mass)
 {
   mInertiaTensor = CalcInertiaTensor(scale, mass);
-  this->updateModel();
+  this->UpdateModel();
   noOfBoxes++;
   mBoundBoxEdges = new sBoundBoxEdges;
   UpdateBoundBox();
@@ -107,13 +107,13 @@ Box::~Box()
 
   also, we can re-use texture after first call... this should be called from updateScene
 */
-void Box::drawInit()
+void Box::DrawInit()
 {
   // boxs
   glBindVertexArray(boxVAO);
 }
 
-void Box::draw(Shader& shader)
+void Box::Draw(Shader& shader)
 {
   shader.setMat4("model", mModel);
   glDrawArrays(GL_TRIANGLES, 0, 36);

@@ -28,25 +28,25 @@ void InputProcess::handleKeyPressedFirstTime(bool& key, bool& action, int glfwKe
   }
 }
 
-void InputProcess::processAllInput(float deltaTime)
+void InputProcess::processAllInput(float const deltaTime)
 {
   processKeyboardInput(deltaTime);
   // processConsoleInput();
 }
 
-void InputProcess::processKeyboardInput(float deltaTime)
+void InputProcess::processKeyboardInput(float const deltaTime)
 {
   if (glfwGetKey(mWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(mWindow, true);
 
   if (glfwGetKey(mWindow, GLFW_KEY_W) == GLFW_PRESS)
-    mCamera->ProcessKeyboard(FORWARD, deltaTime);
+    mCamera->ProcessKeyboard(Camera::Movement::FORWARD, deltaTime);
   if (glfwGetKey(mWindow, GLFW_KEY_S) == GLFW_PRESS)
-    mCamera->ProcessKeyboard(BACKWARD, deltaTime);
+    mCamera->ProcessKeyboard(Camera::Movement::BACKWARD, deltaTime);
   if (glfwGetKey(mWindow, GLFW_KEY_A) == GLFW_PRESS)
-    mCamera->ProcessKeyboard(LEFT, deltaTime);
+    mCamera->ProcessKeyboard(Camera::Movement::LEFT, deltaTime);
   if (glfwGetKey(mWindow, GLFW_KEY_D) == GLFW_PRESS)
-    mCamera->ProcessKeyboard(RIGHT, deltaTime);
+    mCamera->ProcessKeyboard(Camera::Movement::RIGHT, deltaTime);
   if (glfwGetKey(mWindow, GLFW_KEY_SPACE) == GLFW_PRESS) 
   {
     if (!keysPressed.isPausePressed)

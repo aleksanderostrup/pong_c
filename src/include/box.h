@@ -17,8 +17,8 @@ class Box : public Object
     Box(glm::vec3 position, glm::vec3 scale, const char* name, float mass=1.0f);
     ~Box();
 
-    void          drawInit();
-    void          draw(Shader& shader);
+    void          DrawInit();
+    void          Draw(Shader& shader);
     void          UpdateBoundBox();
     virtual float containingRadius();
     bool          SetTexture(EnumTexture texture);

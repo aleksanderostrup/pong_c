@@ -201,10 +201,10 @@ int main()
         // sort the transparent windows before rendering
         // ---------------------------------------------
         std::map<float, glm::vec3> sorted;
-        for (unsigned int i = 0; i < windows.size(); i++)
+        for (auto const& window : windows)
         {
-            float distance = glm::length(camera.Position - windows[i]);
-            sorted[distance] = windows[i];
+            float distance = glm::length(camera.GetPosition() - window);
+            sorted[distance] = window;
         }
 
         // render
@@ -216,11 +216,11 @@ int main()
         // only update frame if we want pause and no step frame forward
         bool pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
 
-        if      (inputProcess.keyActions.printDebug)     { scene.printInfoForSelected(); }
-        if      (inputProcess.keyActions.fAction)        { scene.stupidDebug(); }
-        if      (inputProcess.keyActions.tAction)        { scene.printSummedVelAndRot(); }
+        if      (inputProcess.keyActions.printDebug)     { scene.PrintInfoForSelected(); }
+        if      (inputProcess.keyActions.fAction)        { scene.StupidDebug(); }
+        if      (inputProcess.keyActions.tAction)        { scene.PrintSummedVelAndRot(); }
         if      (inputProcess.keyActions.keyUpAction)    {std::cout << "Up\n"; timeMultiplier *= 2; }
-        else if (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
+        if      (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
 
         // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!!!!!!
         // all objects are moved, drawn here

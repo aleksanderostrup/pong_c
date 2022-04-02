@@ -11,8 +11,8 @@ class Plane : public Object
     Plane(glm::vec3 position, glm::vec2 xyscale, const char* name, float mass=1.0f);
     ~Plane();
 
-    void  drawInit();
-    void  draw(Shader& shader);
+    void  DrawInit();
+    void  Draw(Shader& shader);
     void  UpdateBoundBox();
     float containingRadius();
 

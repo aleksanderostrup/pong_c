@@ -156,11 +156,11 @@ protected:
 
 public:
   // pure abstracts
-  virtual void draw(Shader& shader) = 0;
-  virtual void drawInit() = 0;
+  virtual void Draw(Shader& shader) = 0;
+  virtual void DrawInit() = 0;
   virtual float containingRadius() = 0;
 
-  void checkForErrors()
+  void CheckForErrors()
   {
     static const char* offending = "The offending command is ignored and has no other side effect than to set the error flag.";
     GLenum err;
@@ -199,7 +199,7 @@ public:
     }
   }
 
-  bool ignoreColl()
+  bool IgnoreCollision()
   {
     return mIgnoreCollision;
   }
@@ -235,7 +235,7 @@ public:
               << std::endl;
   }
 
-  void updateModel()
+  void UpdateModel()
   {
     mModel = glm::mat4(1.0f);
     mModel = glm::translate(mModel, mState.position);
@@ -247,20 +247,20 @@ public:
     mModel = glm::scale(mModel, mScale);
   }
 
-  void updatePosition(float dt)
+  void UpdatePosition(float dt)
   {
     mState.position += mState.velocity * dt;
     if (mDebugOutputOn)
     {
       std::cout << glm::to_string(mState.position) << std::endl;
     }
-    updateModel();
+    UpdateModel();
   }
 
-  void updateRotation(float dt)
+  void UpdateRotation(float dt)
   {
     mState.rotation += mState.rotationVelocity * dt;
-    updateModel();
+    UpdateModel();
   }
 
   void setVelocity(const glm::vec3& velocity)
@@ -271,62 +271,62 @@ public:
   // sets a fixed rotation, does not set or rotation velocity
   // rotation is a vector about which to rotate, and the magnitue the 
   // radians to rotate. Set as 0 length vector to set as non-rotated.
-  void setRotation(const glm::vec3& rotation)
+  void SetRotation(const glm::vec3& rotation)
   {
     mState.rotation = rotation;
   }
 
-  void setScale(const glm::vec3& scale)
+  void SetScale(const glm::vec3& scale)
   {
     mScale = scale;
   }
 
-  void setRelativeScale(const float scale)
+  void SetRelativeScale(const float scale)
   {
     mScale *= scale;
   }
 
-  void recordScale()
+  void RecordScale()
   {
     mScaleRec = mScale;
   }
 
-  void restoreScale()
+  void RestoreScale()
   {
     mScale = mScaleRec;
   }
 
-  void setRotationVelocity(const glm::vec3& rotationVelocity)
+  void SetRotationVelocity(const glm::vec3& rotationVelocity)
   {
     mState.rotationVelocity = rotationVelocity;
   }
 
-  void setPosition(glm::vec3 pos) // debug only!
+  void SetPosition(glm::vec3 pos) // debug only!
   {
     mState.position = pos;
   }
 
-  glm::vec3 getPosition()
+  glm::vec3 GetPosition()
   {
     return mState.position;
   }
 
-  glm::vec3 getVelocity()
+  glm::vec3 GetVelocity()
   {
     return mState.velocity;
   }
 
-  glm::vec3 getRotationVelocity() const
+  glm::vec3 GetRotationVelocity() const
   {
     return mState.rotationVelocity;
   }
 
-  void setDebugInfo(bool on)
+  void SetDebugInfo(bool on)
   {
 
   }
 
-  glm::vec3& getEdge(uint32_t index) const
+  glm::vec3 const& GetEdge(uint32_t index) const
   {
     return (*(mBoundBoxEdges))[index];
   }
@@ -480,9 +480,9 @@ public:
   inline void calcAbsPos(glm::vec3& p_abs, glm::vec3& p_rel, const Object* obj)
   {
     p_abs  = obj->mState.position;
-    p_abs += p_rel[0] * obj->getEdge(0);
-    p_abs += p_rel[1] * obj->getEdge(1);
-    p_abs += p_rel[2] * obj->getEdge(2);
+    p_abs += p_rel[0] * obj->GetEdge(0);
+    p_abs += p_rel[1] * obj->GetEdge(1);
+    p_abs += p_rel[2] * obj->GetEdge(2);
   }
 
   /* 
@@ -518,7 +518,7 @@ public:
         float tmp;
         for (int j = 0; j < 3; j++)
         {
-          tmp = -glm::dot(B->getEdge(j), D);
+          tmp = -glm::dot(B->GetEdge(j), D);
           yj_min = tmp;
           yj_max = tmp;
           for (int k = 0; k < 3; k++)
@@ -789,8 +789,8 @@ public:
     // see article 4 in docs/ and https://en.wikipedia.org/wiki/Collision_response#Impulse-based_contact_model
           
     // CoM (i.e., linear) velocities
-    glm::vec3 v_lin_p1 = this->getVelocity();
-    glm::vec3 v_lin_p2 = obj->getVelocity();
+    glm::vec3 v_lin_p1 = this->GetVelocity();
+    glm::vec3 v_lin_p2 = obj->GetVelocity();
     // get center to point of contact vector
     glm::vec3 r_1  = colPoint.p_abs - this->mState.position;
     glm::vec3 r_2  = colPoint.p_abs - obj->mState.position;
@@ -852,12 +852,12 @@ public:
     obj->setVelocity(v_p2a);
 
     // update angular velocities
-    this->setRotationVelocity(w_1a);
-    obj->setRotationVelocity(w_2a);
+    this->SetRotationVelocity(w_1a);
+    obj->SetRotationVelocity(w_2a);
 
   }
 
-  bool checkRayVsBoxCollision(glm::vec3& pRay, glm::vec3& dRay)
+  bool CheckRayVsBoxCollision(glm::vec3 const& pRay, glm::vec3 const& dRay)
   {
     UpdateBoundBox();
     glm::vec3 PmC = pRay - mState.position;
@@ -902,17 +902,17 @@ public:
     return true;
   }
 
-  const char* getName()
+  const char* GetName()
   {
     return mName;
   }
 
-  void recordState()
+  void RecordState()
   {
     mRecState = mState;
   }
 
-  void restoreRecState()
+  void RestoreRecState()
   {
     mState = mRecState;
   }
@@ -922,7 +922,7 @@ public:
     return mIsSelected;
   }
 
-  void setIsSelected(bool selected)
+  void SetIsSelected(bool selected)
   {
     mIsSelected = selected;
   }

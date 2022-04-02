@@ -9,7 +9,7 @@ Plane::Plane(glm::vec3 position, glm::vec2 xyscale, const char* name, float mass
   Object(position, glm::vec3(xyscale.x, 1.0f, xyscale.y), name, mass)
 {
 
-  updateModel();
+  UpdateModel();
   noOfPlanes++;
   mIgnoreCollision = true;
 
@@ -60,13 +60,13 @@ Plane::~Plane()
 
   also, we can re-use texture after first call... this should be called from updateScene
 */
-void Plane::drawInit()
+void Plane::DrawInit()
 {
   // planes
   glBindVertexArray(planeVAO);
 }
 
-void Plane::draw(Shader& shader)
+void Plane::Draw(Shader& shader)
 {
   glBindTexture(GL_TEXTURE_2D, planeTexture);
   // model = glm::mat4(1.0f);

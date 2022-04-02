@@ -185,7 +185,7 @@ enum aiPostProcessSteps
     /** <hr>Splits large meshes into smaller sub-meshes.
     *
     * This is quite useful for real-time rendering, where the number of triangles
-    * which can be maximally processed in a single draw-call is limited
+    * which can be maximally processed in a single Draw-call is limited
     * by the video driver/hardware. The maximum vertex buffer is usually limited
     * too. Both requirements can be met with this step: you may specify both a
     * triangle and vertex limit for a single mesh.
@@ -434,7 +434,7 @@ enum aiPostProcessSteps
     // -------------------------------------------------------------------------
     /** <hr>A postprocessing step to reduce the number of meshes.
      *
-     *  This will, in fact, reduce the number of draw calls.
+     *  This will, in fact, reduce the number of Draw calls.
      *
      *  This is a very effective optimization and is recommended to be used
      *  together with #aiProcess_OptimizeGraph, if possible. The flag is fully

@@ -16,7 +16,7 @@ class SceneFactory
         kSceneTest5 = 5, // only cubes to check for proper beheaviour
     };
     
-    SceneFactory(Camera& camera, uint32_t& width, uint32_t& height);
+    SceneFactory(Camera const& camera, uint32_t const& width, uint32_t const& height);
 
     Scene GetScene(EnumScene enumScene/* , Shader& shader */);
 
@@ -24,8 +24,8 @@ class SceneFactory
 
   private:
 
-    Camera&   mCamera;
-    uint32_t& mWidth;
-    uint32_t& mHeight;
+    Camera const&   mCamera;
+    uint32_t const& mWidth;
+    uint32_t const& mHeight;
 
 };

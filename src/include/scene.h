@@ -12,7 +12,7 @@ struct ColPointDbg
 {
   static const size_t frameCntInit = 5;
 
-  ColPointDbg(Camera& camera)
+  ColPointDbg(Camera const& camera)
     : mColVec(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 3.0f, camera)
   {}
   
@@ -21,18 +21,18 @@ struct ColPointDbg
   
   /* ADD SETLENGTH() FNC? */
 
-  void setColPoint(glm::vec3& p, glm::vec3& dir)
+  void SetColPoint(glm::vec3& p, glm::vec3& dir)
   {
-    mColVec.setPosition(p);
+    mColVec.SetPosition(p);
     mColVec.setDirection(dir);
     mFrameCnt = frameCntInit;
   }
 
-  void draw(glm::mat4& projection, bool isPaused)
+  void Draw(glm::mat4& projection, bool isPaused)
   {
     if (mFrameCnt)
     {
-      mColVec.draw(nullptr, projection);
+      mColVec.Draw(nullptr, projection);
       if (!isPaused)
         mFrameCnt--;
     }
@@ -43,7 +43,7 @@ class Scene
 {
 public:
 
-  Scene(float gridsize, Camera& camera, uint32_t& width, uint32_t& height)
+  Scene(float const gridsize, Camera const& camera, uint32_t const& width, uint32_t const& height)
    : mSkybox(camera, width, height)
    , mCamera(camera)
    , mWidth(width)
@@ -59,14 +59,14 @@ public:
 
   }
 
-  Shader& getShader()
+  Shader& GetShader()
   {
     return mShader;
   }
 
   void updateScene(const float deltaTime, bool isPaused)
   {
-    glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(glm::radians(mCamera.GetZoom()), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
     glm::mat4 view = mCamera.GetViewMatrix();
 
     mShaderSingleColor.use();
@@ -82,7 +82,7 @@ public:
     {
       UpdatePos(deltaTime, isPaused);
       // do not calculate, just check
-      if (detectCollisions(kStopOnFirst))
+      if (DetectCollisions(CollisionDetectionStop::kStopOnFirst))
       {
         bool colDetected;
         float timeLeft = deltaTime;
@@ -109,7 +109,7 @@ public:
           {
             totalLoops++; // DEBUG TEST
             // 1) go to previous position
-            stepBackObjects();
+            StepBackObjects();
             // sub-divide
             updateTimeGran /= 2;
             // DEBUG /DEVELOP CODE!
@@ -127,7 +127,7 @@ public:
             UpdatePos(updateTimeGran, isPaused);
             std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
           }
-          while ((colDetected = detectCollisions(kStopOnFirst)) && // keep dividing while we have a collision AND
+          while ((colDetected = DetectCollisions(CollisionDetectionStop::kStopOnFirst)) && // keep dividing while we have a collision AND
                  (divDepth != divDepthMax));                       // not reached the max binary depth
           if (timeLeft <= updateTimeGran)
           {
@@ -140,7 +140,7 @@ public:
           {
             resolvedNumberForDebug++;
             // resolve the collisions
-            if (!detectCollisions(kHandleAll))
+            if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
             {
               std::cout << "UNEXPECTED!\n";
             }
@@ -153,7 +153,7 @@ public:
           updateTimeGran = timeLeft;
           // try to move to the end of the timestep
           UpdatePos(timeLeft, isPaused);
-          if (!detectCollisions(kStopOnFirst))
+          if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
           {
             // if no collisions to resolve, exit at the final time step
             break;
@@ -169,33 +169,33 @@ public:
       }
     }
     
-    drawObjects();
-    mColPointDbg.draw(projection, isPaused);
+    DrawObjects();
+    mColPointDbg.Draw(projection, isPaused);
     mShader.use();
-    drawDebugObject(); // TODO: implement more elegantly than there!
+    DrawDebugObject(); // TODO: implement more elegantly than there!
     mShader.use();
-    drawOverlay();
+    DrawOverlay();
     
 
-    // draw skybox as last
-    mSkybox.draw();
+    // Draw skybox as last
+    mSkybox.Draw();
   }
 
-  void stupidDebug()
+  void StupidDebug()
   {
     // stupidDebugThingStopOnFirst = !stupidDebugThingStopOnFirst;
     // std::cout << "Cam.. Pos: " << glm::to_string(mCamera.Position) << " Front: " << glm::to_string(mCamera.Front) << "\n";
-    selectNearestObjectPointedAt();
+    SelectNearestObjectPointedAt();
   }
 
-  void printSummedVelAndRot() const
+  void PrintSummedVelAndRot() const
   {
     glm::vec3 totalVel(0.0f);
     glm::vec3 totalRotVel(0.0f);
     for (auto const& o : objects)
     {
-      totalVel    += o->getVelocity();
-      totalRotVel += o->getRotationVelocity();
+      totalVel    += o->GetVelocity();
+      totalRotVel += o->GetRotationVelocity();
     }
     std::cout << "Total vel     = " << glm::to_string(totalVel)     << "|" << std::to_string(glm::length(totalVel))     << "|\n";
     std::cout << "Total rot_vel = " << glm::to_string(totalRotVel)  << "|" << std::to_string(glm::length(totalRotVel))  << "|\n";
@@ -204,14 +204,14 @@ public:
 protected:
 
 public:
-  void addObject(Object* obj, TextureManager::EnumTexture textureEnum = TextureManager::kDan)
+  void AddObject(Object* obj, TextureManager::EnumTexture textureEnum = TextureManager::kDan)
   {
     std::string concName;
     for (auto it = this->objects.begin() ; it != this->objects.end(); ++it)
     {
-      if (strcmp((*it)->getName(), obj->getName()) == 0)
+      if (strcmp((*it)->GetName(), obj->GetName()) == 0)
       {
-        std::cout << "Error, name " << obj->getName() << " already exists - aborting program." << std::endl;
+        std::cout << "Error, name " << obj->GetName() << " already exists - aborting program." << std::endl;
         exit(0);
       }
     }
@@ -226,7 +226,7 @@ public:
     colDebugObject->SetTextureId(TextureManager::kMetal, &textureManager);
   }
 
-  void setColNormalDebugObject(std::vector<Object*>& obj, size_t index)
+  void SetColNormalDebugObject(std::vector<Object*>& obj, size_t index)
   {
     // FOR DEBUGGING - FIND MORE ELEGANT WAY TO DO THIS
     switch (index)
@@ -236,7 +236,7 @@ public:
     }
   }
 
-  void printInfoForSelected()
+  void PrintInfoForSelected()
   {
     std::cout << "\n----- ************************ -----\n"
               <<   "----- Info for selected object -----\n"
@@ -251,7 +251,7 @@ public:
 
 private:
 
-  enum CollisionDetectionStop {
+  enum class CollisionDetectionStop {
     kStopOnFirst    = 1,
     kTrackAllLSAs   = 2,
     kHandleAll      = 3
@@ -266,9 +266,9 @@ private:
   std::map<std::string, sLastSeparatingAxis> lastSeparatingAxis;
   TextureManager                             textureManager;
   Skybox                                     mSkybox;
-  Camera&                                    mCamera;
-  uint32_t&                                  mWidth;
-  uint32_t&                                  mHeight;
+  Camera const&                              mCamera;
+  uint32_t const&                            mWidth;
+  uint32_t const&                            mHeight;
   Shader                                     mShader;
   Shader                                     mShaderSingleColor;
   ColPointDbg                                mColPointDbg;
@@ -277,7 +277,7 @@ private:
   bool                                       stupidDebugThingStopOnFirst = false;          
 
   // helper function 
-  void insertLSA(std::string& concName, sLastSeparatingAxis& lsa)
+  void InsertLSA(std::string& concName, sLastSeparatingAxis& lsa)
   {
     std::pair<std::map<std::string, sLastSeparatingAxis>::iterator, bool> retPair;
     retPair = lastSeparatingAxis.insert(std::pair<std::string, sLastSeparatingAxis>(concName, lsa));
@@ -289,18 +289,18 @@ private:
 
   void DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(glm::vec3& colPoint, glm::vec3& colNormal)
   {
-    mColPointDbg.setColPoint(colPoint, colNormal);
+    mColPointDbg.SetColPoint(colPoint, colNormal);
     if (colDebugObject != nullptr)
     {
-      colDebugObject->setPosition(colPoint);
-      colDebugObject->updateModel();
+      colDebugObject->SetPosition(colPoint);
+      colDebugObject->UpdateModel();
       float normalLengthMax = 3.0f;
       float normalStep = normalLengthMax / colNormalDebugObjectVector.size();
       float normalCur = 0.0f;
       for (auto& pObj : colNormalDebugObjectVector)
       { 
-        pObj->setPosition(colPoint + normalCur * colNormal);
-        pObj->updateModel();
+        pObj->SetPosition(colPoint + normalCur * colNormal);
+        pObj->UpdateModel();
         normalCur += normalStep;
       }
     }
@@ -313,8 +313,8 @@ private:
     float normalCur = 0.0f;
     for (auto& pObj : colNormalDebugObjectVector2)
     { 
-      pObj->setPosition(colPoint + normalCur * colNormal);
-      pObj->updateModel();
+      pObj->SetPosition(colPoint + normalCur * colNormal);
+      pObj->UpdateModel();
       normalCur += normalStep;
     }
   }
@@ -322,7 +322,7 @@ private:
 
   // TODO : parallelize if we have more than N objects
   //        join threads in the end
-  bool detectCollisions(CollisionDetectionStop stopWhen)
+  bool DetectCollisions(CollisionDetectionStop const stopWhen)
   {
     sLastSeparatingAxis lsa;
     bool withinSphere;
@@ -331,7 +331,7 @@ private:
     /* 
       OPTIMIZE:
       record the last 2 objects that collided, and start with them for major speed up
-      (at least in case we're in scenario: stopWhen = kStopOnFirst)
+      (at least in case we're in scenario: stopWhen = CollisionDetectionStop::kStopOnFirst)
     */
 
     for (auto it = this->objects.begin() ; it != this->objects.end(); ++it)
@@ -341,7 +341,7 @@ private:
       for (auto it2 = (it + 1); it2 != this->objects.end(); ++it2)
       {
         // consider having a separate vector where this is filtered out when added
-        if ((*it)->ignoreColl() || (*it2)->ignoreColl())
+        if ((*it)->IgnoreCollision() || (*it2)->IgnoreCollision())
         {
           continue;
         }
@@ -349,11 +349,11 @@ private:
         // objects shall have checkCollision that takes in an object
         if ((*it)->checkCollision(*it2, &lsa, &withinSphere, C_ij))
         {
-          if (kStopOnFirst == stopWhen)
+          if (CollisionDetectionStop::kStopOnFirst == stopWhen)
           {
             return true;
           }
-          concName = std::string((*it)->getName()) + std::string((*it2)->getName());
+          concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
 
           sCollisionPoint colPoint;
           std::cout << "Retrieveing ConcName = " << concName << " and normal = " << glm::to_string(lastSeparatingAxis[concName].normal) << "\n";
@@ -366,11 +366,11 @@ private:
         // start tracking last separating axis when inside sphere
         else if (withinSphere)
         {
-          concName = std::string((*it)->getName()) + std::string((*it2)->getName());
-          glm::vec3 tmpPos = (*it)->getPosition();
+          concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
+          glm::vec3 tmpPos = (*it)->GetPosition();
           DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(tmpPos, lsa.normal);
-          drawDebugObject();
-          insertLSA(concName, lsa);
+          DrawDebugObject();
+          InsertLSA(concName, lsa);
         }
         
       }
@@ -385,14 +385,14 @@ private:
       if (!isPaused) 
       {
         // SOME OBJECTS CAN BE NON-MOVABLE -> NO NEED TO CHANGE THEIR POSITION. THIS SHOULD BE IMPLEMENTED - FX WITH A BOOL OR mass == INFINITY?
-        o->recordState();
-        o->updatePosition(deltaTime);
-        o->updateRotation(deltaTime);
+        o->RecordState();
+        o->UpdatePosition(deltaTime);
+        o->UpdateRotation(deltaTime);
       }
     }
   }
   
-  void drawObjects()
+  void DrawObjects()
   {
     const float selectedScale = 0.97;
     // glStencilMask(0x00); // make sure we don't update the stencil buffer while drawing the floor
@@ -404,32 +404,32 @@ private:
     {
       if (o->isSelected())
       {
-        o->recordScale(); // record scale before changing (restored below)
-        o->setRelativeScale(selectedScale); // shrink object a little to draw select stencil below
-        o->updateModel(); // update model to reflect scaling
+        o->RecordScale(); // record scale before changing (restored below)
+        o->SetRelativeScale(selectedScale); // shrink object a little to Draw select stencil below
+        o->UpdateModel(); // update model to reflect scaling
       }
-      o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
+      o->DrawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
       o->ActivateTextureId(&textureManager);
-      o->draw(mShader);
-      o->checkForErrors();
+      o->Draw(mShader);
+      o->CheckForErrors();
     }
     
     glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
     glStencilMask(0x00);
     // glDisable(GL_DEPTH_TEST);
-    // switch to single color to draw selected objects select frame
+    // switch to single color to Draw selected objects select frame
     mShaderSingleColor.use();
 
     for (auto& o : objects)
     {
       if (o->isSelected())
       {
-        o->restoreScale(); // restore object to original size
-        o->updateModel();
-        o->drawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
+        o->RestoreScale(); // restore object to original size
+        o->UpdateModel();
+        o->DrawInit(); // CAN BE OPTIMIZED: SHOULD ONLY BE CALLED ONCE FOR EACH OBJECT TYPE (e.g., once for box, once for sphere, once for plane, etc.)
         // o->ActivateTextureId(&textureManager);
-        o->draw(mShaderSingleColor);
-        o->checkForErrors();
+        o->Draw(mShaderSingleColor);
+        o->CheckForErrors();
       }
     }
     glStencilMask(0xFF);
@@ -438,21 +438,21 @@ private:
 
   }
 
-  void drawDebugObject()
+  void DrawDebugObject()
   {
     if (nullptr != colDebugObject)
     {
-      colDebugObject->drawInit();
+      colDebugObject->DrawInit();
       colDebugObject->ActivateTextureId(&textureManager);
-      colDebugObject->draw(mShader);
+      colDebugObject->Draw(mShader);
       for (auto& pObj : colNormalDebugObjectVector)
-        pObj->draw(mShader);
+        pObj->Draw(mShader);
       for (auto& pObj : colNormalDebugObjectVector2)
-        pObj->draw(mShader);
+        pObj->Draw(mShader);
     }
   }
 
-  void drawOverlay()
+  void DrawOverlay()
   {
     static Shader s("../shaders/overlayshader.vs", "../shaders/overlayshader.fs");
     static bool init = true;
@@ -493,31 +493,31 @@ private:
 
   }
 
-  void stepBackObjects()
+  void StepBackObjects()
   {
     for (auto& o : objects)
     {
-      o->restoreRecState();
+      o->RestoreRecState();
     }
   }
 
   // not completely finished - there are edge cases where we don't select the right element!
   // (example: big object that is nearer, but has part of it behind the intended object, and the ray passing through this part)
-  void selectNearestObjectPointedAt()
+  void SelectNearestObjectPointedAt()
   {
     using objDist = std::pair<Object*, float>;
     std::vector<objDist> pointedAt;
-    glm::vec3& pRay = mCamera.Position;
-    glm::vec3& dRay = mCamera.Front; // must be normalized!
+    auto const& pRay = mCamera.GetPosition();
+    auto const& dRay = mCamera.GetFront(); // must be normalized!
     float minDist = INFINITY;
     Object* objPointedAt;
     // dRay = glm::normalize(dRay);
     
     for (auto& o : objects)
     {
-      if (o->checkRayVsBoxCollision(pRay, dRay))
+      if (o->CheckRayVsBoxCollision(pRay, dRay))
       {
-        float dist = glm::length(pRay - o->getPosition());
+        float dist = glm::length(pRay - o->GetPosition());
         // keep track of nearest (simple / naive version)
         if (dist < minDist)
         {
@@ -529,7 +529,7 @@ private:
 
 
     bool isSel = objPointedAt->isSelected();
-    objPointedAt->setIsSelected(!isSel); // toggle selection
+    objPointedAt->SetIsSelected(!isSel); // toggle selection
     if (isSel)
     {
       for (size_t cnt = 0; cnt < selectedObjects.size(); cnt++)

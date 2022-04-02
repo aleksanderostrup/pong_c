@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
+                "~/eclipse-workspace/pong_3d/src/include",
                 "~/eclipse-workspace/pong_3d/include",
                 "~/eclipse-workspace/pong_3d/include/glm/",
                 "~/eclipse-workspace/pong_3d/include/glm/gtc/"

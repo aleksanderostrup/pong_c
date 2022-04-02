@@ -17,13 +17,13 @@ static unsigned int lineVBO[3];
     
    */
   
-Line::Line(glm::vec3 position, glm::vec3 direction, float length, Camera& camera)
+Line::Line(glm::vec3 position, glm::vec3 direction, float length, Camera const& camera)
   : mCamera(camera)
   , mLength(1.0f, 1.0f, 1.0f)
 {
   noOfLines++;
   mModel = glm::mat4(1.0);
-  setPosition(position);
+  SetPosition(position);
   setDirection(direction);
   setLength(length);
 
@@ -101,7 +101,7 @@ Line::~Line()
 //   glBindVertexArray(lineVAO);
 // }
 
-void Line::draw(Shader* shader, glm::mat4& projection)
+void Line::Draw(Shader* shader, glm::mat4& projection)
 {
   if (nullptr == shader)
   {
@@ -121,7 +121,7 @@ void Line::draw(Shader* shader, glm::mat4& projection)
   }
 }
 
-void Line::setPosition(glm::vec3& pos)
+void Line::SetPosition(glm::vec3& pos)
 {
   // mModel = glm::translate(mModel, pos);
   mModel[3][0] = pos.x;
@@ -185,7 +185,7 @@ void Line::setDirection(glm::vec3& dir)
   }
 
 
-  setPosition(mPos);
+  SetPosition(mPos);
   // mModel = glm::scale(mModel, mLength);
   mDir = B; // store new direction
 }

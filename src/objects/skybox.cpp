@@ -5,7 +5,7 @@
 static bool skyboxExits = false;
 static unsigned int skyboxVAO, skyboxVBO;
 
-unsigned int loadCubemap(std::vector<std::string> faces)
+unsigned int LoadCubemap(std::vector<std::string> faces)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -40,7 +40,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 
 
-Skybox::Skybox(Camera& camera, uint32_t& width, uint32_t& height)
+Skybox::Skybox(Camera const& camera, uint32_t const& width, uint32_t const& height)
  : mCamera(camera)
  , mHeight(height)
  , mWidth(width)
@@ -118,7 +118,7 @@ Skybox::Skybox(Camera& camera, uint32_t& width, uint32_t& height)
         "../skyboxes/water_and_mountains/back.jpg",
     };
     // Takes a little bit fo time
-    mCubemapTexture = loadCubemap(faces);
+    mCubemapTexture = LoadCubemap(faces);
 
     mShader->use();
     mShader->setInt("skybox", 0);
@@ -139,15 +139,15 @@ Skybox::~Skybox()
 
   also, we can re-use texture after first call... this should be called from updateScene
 */
-void Skybox::drawInit()
+void Skybox::DrawInit()
 {
   // skyboxs
   glBindVertexArray(skyboxVAO);
 }
 
-void Skybox::draw()
+void Skybox::Draw()
 {
-  glm::mat4 projection = glm::perspective(glm::radians(mCamera.Zoom), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
+  glm::mat4 projection = glm::perspective(glm::radians(mCamera.GetZoom()), (float)mWidth / (float)mHeight, 0.1f, 100.0f);
   glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
   mShader->use();
   glm::mat4 view = glm::mat4(glm::mat3(mCamera.GetViewMatrix())); // remove translation from the view matrix

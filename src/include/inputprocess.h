@@ -20,10 +20,10 @@ class InputProcess
     InputProcess(GLFWwindow* window, Camera* camera);
 
     // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-    void processAllInput(float deltaTime);
+    void processAllInput(float const deltaTime);
 
   private:
-    void processKeyboardInput       (float deltaTime);
+    void processKeyboardInput       (float const deltaTime);
     void handleKeyPressedFirstTime  (bool& key, bool& action, int glfwKey);
 
     GLFWwindow* mWindow;

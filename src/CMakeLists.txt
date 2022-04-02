@@ -23,6 +23,7 @@ add_subdirectory(inputs)
 add_subdirectory(scene)
 add_subdirectory(setup)
 add_subdirectory(texture)
+add_subdirectory(camera)
 add_subdirectory(thirdparty)
 
 target_link_libraries(phys_engine
@@ -31,6 +32,7 @@ target_link_libraries(phys_engine
   scene
   setup
   texture
+  camera
   thirdparty
   glfw
   objects

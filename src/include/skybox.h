@@ -9,16 +9,16 @@ class Skybox/*  : public Object */
 {
   public:
 
-    Skybox(Camera& camera, uint32_t& width, uint32_t& height);
+    Skybox(Camera const& camera, uint32_t const& width, uint32_t const& height);
     ~Skybox();
 
-    void          drawInit();
-    void          draw();
+    void DrawInit();
+    void Draw();
 
   private:
-    Shader* mShader;
-    unsigned int mCubemapTexture;
-    Camera& mCamera;
-    uint32_t& mHeight;
-    uint32_t& mWidth;
+    Shader*             mShader;
+    unsigned int        mCubemapTexture;
+    Camera const&       mCamera;
+    uint32_t const&     mHeight;
+    uint32_t const&     mWidth;
 };
