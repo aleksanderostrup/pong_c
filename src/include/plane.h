@@ -14,7 +14,7 @@ class Plane : public Object
     void  DrawInit();
     void  Draw(Shader& shader);
     void  UpdateBoundBox();
-    float containingRadius();
+    float ContainingRadius() const;
 
   private:
   

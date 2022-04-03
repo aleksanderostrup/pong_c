@@ -4,15 +4,16 @@
 #include "box.h"
 #include "cube.h"
 
-SceneFactory::SceneFactory(Camera const& camera, uint32_t const& width, uint32_t const& height)
+SceneFactory::SceneFactory(Camera const& camera, bool const& isPaused, uint32_t const& width, uint32_t const& height)
  :  mCamera(camera)
  ,  mWidth(width)
  ,  mHeight(height)
+ ,  mIsPaused(isPaused)
 {
 }
 
 
-static inline void AddDebugObjects(Scene& scene, Shader& shader)
+static inline void AddDebugObjects(Scene& scene)
 {
     auto* colPointBox = new Box(glm::vec3( 3.0f, 0.0f,  -3.5f), glm::vec3( 0.08f, 0.08f,  0.08f), "colPointBox");
 
@@ -301,10 +302,10 @@ static void PopulateSceneTest5(Scene& scene)
     
 }
 
-Scene SceneFactory::GetScene(EnumScene enumScene/* , Shader& shader */)
+Scene SceneFactory::GetScene(EnumScene enumScene)
 {
     // create a scene
-    Scene scene(0.01, mCamera, mWidth, mHeight/* , shader */);
+    Scene scene(0.01, mIsPaused, mCamera, mWidth, mHeight);
     
     switch (enumScene)
     {
@@ -315,7 +316,7 @@ Scene SceneFactory::GetScene(EnumScene enumScene/* , Shader& shader */)
         case kSceneTest5: PopulateSceneTest5(scene); break;
     }
     // handle debug objects adding centrally
-    AddDebugObjects(scene, scene.GetShader());
+    AddDebugObjects(scene);
     return scene;
 }
 

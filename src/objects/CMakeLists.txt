@@ -1,4 +1,5 @@
 add_library(objects
+  object.cpp
   box.cpp
   line.cpp
   skybox.cpp

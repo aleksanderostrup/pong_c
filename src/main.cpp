@@ -12,7 +12,6 @@
 #include "cube.h"
 #include "skybox.h"
 #include "plane.h"
-#include "scene.h"
 #include "sceneFactory.h"
 #include "cmdInterpreter.h"
 #include "inputprocess.h"
@@ -132,7 +131,8 @@ int main()
 
     
     // create a scene
-    SceneFactory sceneFactory(camera, scr_width, scr_height);
+    bool pauseFrame;
+    SceneFactory sceneFactory(camera, pauseFrame, scr_width, scr_height);
     Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest5);
     
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
@@ -214,19 +214,19 @@ int main()
         
         
         // only update frame if we want pause and no step frame forward
-        bool pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
+        pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
 
-        if      (inputProcess.keyActions.printDebug)     { scene.PrintInfoForSelected(); }
-        if      (inputProcess.keyActions.fAction)        { scene.StupidDebug(); }
-        if      (inputProcess.keyActions.tAction)        { scene.PrintSummedVelAndRot(); }
-        if      (inputProcess.keyActions.keyUpAction)    {std::cout << "Up\n"; timeMultiplier *= 2; }
-        if      (inputProcess.keyActions.keyDownAction)  {std::cout << "Down\n"; timeMultiplier /= 2; }
+        if (inputProcess.keyActions.printDebug    )   { scene.PrintInfoForSelected();               }
+        if (inputProcess.keyActions.fAction       )   { scene.StupidDebug();                        }
+        if (inputProcess.keyActions.tAction       )   { scene.PrintSummedVelAndRot();               }
+        if (inputProcess.keyActions.keyUpAction   )   { std::cout << "Up\n"; timeMultiplier *= 2;   }
+        if (inputProcess.keyActions.keyDownAction )   { std::cout << "Down\n"; timeMultiplier /= 2; }
 
-        // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!!!!!!
-        // all objects are moved, drawn here
-        // also, collisions are detected and calculated
         
-        scene.updateScene(0.0124 * timeMultiplier/* deltaTime */, pauseFrame);
+        // all objects are moved and drawn here
+        // also, collisions are detected and calculated
+        // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!! - Fixed time only for recreating issues
+        scene.UpdateScene(0.0124 * timeMultiplier/* deltaTime */);
         
         // windows (from furthest to nearest)
         // glBindVertexArray(transparentVAO);

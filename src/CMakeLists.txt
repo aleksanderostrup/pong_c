@@ -6,8 +6,6 @@ target_compile_options(phys_engine
     PRIVATE "-Wall"    
 )
 
-# TODO: set compiler to c++17
-
 target_include_directories(phys_engine
     PUBLIC ../include/
     PUBLIC ../include/assimp/

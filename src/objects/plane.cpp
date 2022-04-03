@@ -58,7 +58,7 @@ Plane::~Plane()
 /*
   make a selection between relative and absoulte draw (relative should be to previously drawn! - we need to make model member and reset it to 1.0f on absolute)
 
-  also, we can re-use texture after first call... this should be called from updateScene
+  also, we can re-use texture after first call... this should be called from UpdateScene
 */
 void Plane::DrawInit()
 {
@@ -84,7 +84,7 @@ void Plane::UpdateBoundBox()
   // topRight = mPosition + halfSide;
 }
 
-float Plane::containingRadius()
+float Plane::ContainingRadius() const
 {
   // determine better way to calc
   return 50000.0f;

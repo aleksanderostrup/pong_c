@@ -20,7 +20,7 @@ class Box : public Object
     void          DrawInit();
     void          Draw(Shader& shader);
     void          UpdateBoundBox();
-    virtual float containingRadius();
+    virtual float ContainingRadius() const;
     bool          SetTexture(EnumTexture texture);
 
   private:

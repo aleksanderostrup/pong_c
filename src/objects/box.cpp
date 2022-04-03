@@ -105,7 +105,7 @@ Box::~Box()
 /*
   make a selection between relative and absoulte draw (relative should be to previously drawn! - we need to make model member and ref it to 1.0f on absolute)
 
-  also, we can re-use texture after first call... this should be called from updateScene
+  also, we can re-use texture after first call... this should be called from UpdateScene
 */
 void Box::DrawInit()
 {
@@ -122,7 +122,7 @@ void Box::Draw(Shader& shader)
 void Box::UpdateBoundBox()
 {
   // get upper 3x3 matrix (Rotation matrix) from the model matrix
-  glm::mat3 rotM  = getRotationMatrix();
+  glm::mat3 rotM  { GetRotationMatrix() };
   // // they have to be unit vectors!
   mBoundBoxEdges->Ax = glm::normalize(rotM[0]);
   mBoundBoxEdges->Ay = glm::normalize(rotM[1]);
@@ -130,7 +130,7 @@ void Box::UpdateBoundBox()
 }
 
 
-float Box::containingRadius()
+float Box::ContainingRadius() const
 {
   // sides from center are 1/2. Using Pyth. Theorem, and squaring we get:
   // (a/2)^2 + (b/2)^2 + (c/2)^2 = (a^2 + b^2 + c^2) / 4 = r^2    <=>  r = sqrt(a<dot>a) / 2
