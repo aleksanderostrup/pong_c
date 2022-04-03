@@ -58,14 +58,14 @@ static TextureManager::TextureId loadTexture(char const * path)
     return static_cast<TextureManager::TextureId>(textureID);
 }
 
-const char* TextureManager::GetTexturePath(EnumTexture texture)
+const char* TextureManager::GetTexturePath(Texture texture)
 {
   switch (texture)
   {
-    case kInvalid:      return (const char*)"";
-    case kDan:          return (const char*)"../textures/dan_bono.jpg";
-    case kMetal:        return (const char*)"../textures/metal.png";
-    case kRedWindow:    return (const char*)"../textures/window.png";
+    case Texture::kInvalid:      return (const char*)"";
+    case Texture::kDan:          return (const char*)"../textures/dan_bono.jpg";
+    case Texture::kMetal:        return (const char*)"../textures/metal.png";
+    case Texture::kRedWindow:    return (const char*)"../textures/window.png";
     default:      
         std::cout << "INVALID TEXTURE IN \n" << __FUNCTION__; 
         exit(0);
@@ -88,7 +88,7 @@ size_t TextureManager::GetAvailableSlot(bool& noSlotAvailable)
     return 0;
 }
 
-bool TextureManager::DeregisterTexture(EnumTexture texture)
+bool TextureManager::DeregisterTexture(Texture texture)
 {
     auto texturePair = mGeneratedTextures.find(texture);
     if (texturePair == mGeneratedTextures.end())
@@ -109,7 +109,7 @@ bool TextureManager::DeregisterTexture(EnumTexture texture)
     return true;
 }
 
-bool TextureManager::RegisterTexture(EnumTexture texture)
+bool TextureManager::RegisterTexture(Texture texture)
 {
     // check if we already have texture
     auto texturePair = mGeneratedTextures.find(texture);
@@ -140,9 +140,9 @@ bool TextureManager::RegisterTexture(EnumTexture texture)
     return true;
 }
 
-bool TextureManager::ActivateTexture(EnumTexture texture)
+bool TextureManager::ActivateTexture(Texture texture)
 {
-    assert(texture != kInvalid);
+    assert(texture != Texture::kInvalid);
     auto texturePair = mGeneratedTextures.find(texture);
     if (texturePair == mGeneratedTextures.end())
     {

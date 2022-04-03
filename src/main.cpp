@@ -1,21 +1,19 @@
+
+// TODO: clean up includes
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <stb_image.h>
 
-#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader_s.h"
 #include "camera.h"
 #include "model.h"
-#include "cube.h"
-#include "skybox.h"
-#include "plane.h"
 #include "sceneFactory.h"
 #include "cmdInterpreter.h"
 #include "inputprocess.h"
 #include "glfw_setup.h"
+#include "box.h"
 
 #include <iostream>
 #include <vector>
@@ -73,7 +71,6 @@ todo:
 */
 
 
-
 // unsigned int loadTexture(const char *path);
 // TODO: settings should be in separate object!
 // settings
@@ -116,9 +113,6 @@ int main()
     // command thread 
     // std::thread cmds(threadTest);
 
-    // create instance of input processing
-    InputProcess inputProcess(window, &camera);
-
     // add commands and put the interpreter in a new thread -> poll it in frame loop?
     // we should add a wrapper around the interpreter that handles commands as either sync or async
     // sync commands are run in the frame loop, async are meta commands that are run immediately
@@ -131,10 +125,19 @@ int main()
 
     
     // create a scene
-    bool pauseFrame;
-    SceneFactory sceneFactory(camera, pauseFrame, scr_width, scr_height);
-    Scene scene = sceneFactory.GetScene(SceneFactory::kSceneTest5);
-    
+    auto scene = SceneFactory(camera, scr_width, scr_height).GetScene(SceneFactory::SceneId::kSceneTest5);
+
+    // create instance of input processing
+    InputProcess inputProcess(window, &camera, scene);
+    inputProcess.BindKeyToAction(GLFW_KEY_SPACE, [](Scene& scene){scene.TogglePause();              });
+    inputProcess.BindKeyToAction(GLFW_KEY_P,     [](Scene& scene){scene.PrintInfoForSelected();     });
+    inputProcess.BindKeyToAction(GLFW_KEY_F,     [](Scene& scene){scene.StupidDebug();              });
+    inputProcess.BindKeyToAction(GLFW_KEY_T,     [](Scene& scene){scene.PrintSummedVelAndRot();     });
+    inputProcess.BindKeyToAction(GLFW_KEY_UP,    [](Scene& scene){scene.ModifyTime(2.0f);           });
+    inputProcess.BindKeyToAction(GLFW_KEY_DOWN,  [](Scene& scene){scene.ModifyTime(0.5f);           });
+    inputProcess.BindKeyToAction(GLFW_KEY_RIGHT, [](Scene& scene){scene.ForceFrameForward(0.0124);  }); 
+    inputProcess.BindKeyToAction(GLFW_KEY_LEFT,  [](Scene& scene){scene.FrameBackward();            }); 
+
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
     // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 
     // object it hits because the collision point could not be resolved
@@ -182,7 +185,6 @@ int main()
     // --------------------
     // shader.use(); // if multiple shaders exists, they should be set to use in the render loop
     // shader.setInt("texture1", 0);
-    float timeMultiplier = 1.0f; // speed time up or down
 
     // render loop
     // -----------
@@ -212,21 +214,12 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         
-        
         // only update frame if we want pause and no step frame forward
-        pauseFrame = inputProcess.keyActions.pause & !inputProcess.keyActions.frameForward;
-
-        if (inputProcess.keyActions.printDebug    )   { scene.PrintInfoForSelected();               }
-        if (inputProcess.keyActions.fAction       )   { scene.StupidDebug();                        }
-        if (inputProcess.keyActions.tAction       )   { scene.PrintSummedVelAndRot();               }
-        if (inputProcess.keyActions.keyUpAction   )   { std::cout << "Up\n"; timeMultiplier *= 2;   }
-        if (inputProcess.keyActions.keyDownAction )   { std::cout << "Down\n"; timeMultiplier /= 2; }
-
-        
         // all objects are moved and drawn here
         // also, collisions are detected and calculated
         // TODO -> INSERT DELTA TIME INSTEAD OF FIXED TIME!! - Fixed time only for recreating issues
-        scene.UpdateScene(0.0124 * timeMultiplier/* deltaTime */);
+        scene.UpdateScene(0.0124/* deltaTime */);
+
         
         // windows (from furthest to nearest)
         // glBindVertexArray(transparentVAO);
@@ -245,7 +238,6 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
     glfwTerminate();
     return 0;
 }

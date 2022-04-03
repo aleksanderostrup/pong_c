@@ -13,7 +13,7 @@ class TextureManager
   public:
 
     using TextureId = uint32_t; // USE GLuint ?
-    enum EnumTexture
+    enum class Texture
     {
       kInvalid      = 0,
       kDan          = 1,
@@ -24,9 +24,9 @@ class TextureManager
     TextureManager();
     // ~TextureManager();
 
-    bool    RegisterTexture           (EnumTexture texture);
-    bool    DeregisterTexture         (EnumTexture texture);
-    bool    ActivateTexture           (EnumTexture texture);
+    bool    RegisterTexture           (Texture texture);
+    bool    DeregisterTexture         (Texture texture);
+    bool    ActivateTexture           (Texture texture);
     
     // size_t  GetMaxSimultaneousTextures();
 
@@ -37,9 +37,9 @@ class TextureManager
         size_t    userCnt; // keep score of how many are using this texture
     };
 
-    std::unordered_map<EnumTexture, sTexture> mGeneratedTextures;
-    EnumTexture                               mBoundTexture = kInvalid;
+    std::unordered_map<Texture, sTexture> mGeneratedTextures;
+    Texture                               mBoundTexture = Texture::kInvalid;
 
-    const char* GetTexturePath(EnumTexture texture);
+    const char* GetTexturePath(Texture texture);
     size_t  GetAvailableSlot  (bool& noSlotAvailable);
 };

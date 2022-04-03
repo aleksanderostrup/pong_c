@@ -23,7 +23,7 @@ Box::Box(glm::vec3 position, glm::vec3 scale, const char* name, float mass) :
   mInertiaTensor = CalcInertiaTensor(scale, mass);
   this->UpdateModel();
   noOfBoxes++;
-  mBoundBoxEdges = new sBoundBoxEdges;
+  mBoundBoxEdges = std::make_unique<BoundBoxEdges>();
   UpdateBoundBox();
   // first box
   if (noOfBoxes == 1)
@@ -98,7 +98,6 @@ Box::~Box()
     glDeleteVertexArrays(1, &boxVAO);
     glDeleteBuffers(1, &boxVBO);
   }
-  delete mBoundBoxEdges;
 }
 
 

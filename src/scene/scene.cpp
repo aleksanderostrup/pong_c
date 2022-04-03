@@ -1,5 +1,6 @@
 #include "scene.h"
 
+
 ColPointDbg::ColPointDbg(Camera const& camera)
   : mColVec(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 3.0f, camera)
 {}
@@ -21,7 +22,7 @@ void ColPointDbg::Draw(glm::mat4& projection, bool const isPaused)
   }
 }
 
-Scene::Scene(float const gridsize, bool const& isPaused, Camera const& camera, uint32_t const& width, uint32_t const& height)
+Scene::Scene(float const gridsize, Camera const& camera, uint32_t const& width, uint32_t const& height)
   : _skybox            (camera, width, height)
   , _camera            (camera)
   , _width             (width)
@@ -30,14 +31,134 @@ Scene::Scene(float const gridsize, bool const& isPaused, Camera const& camera, u
   , _shaderSingleColor ("../shaders/shader.vs", "../shaders/singlecolorshader.fs")
   , _colPointDbg       (camera)
   , _gridsize          (gridsize)
-  , _isPaused          (isPaused)
+  , _isPaused          (false)
 {
   _shader.use();
   _shader.setInt("texture1", 0);
 }
 
+void Scene::ForceFrameForward(float const deltaTime)
+{
+  if (IsPaused())
+  {
+    TogglePause();
+    FrameForward(deltaTime);
+    TogglePause();
+  }
+}
+
+void Scene::SaveScene()
+{
+  _sceneSnapshot.clear();
+  for (auto const& o : _objects)
+    _sceneSnapshot.push_back({o->GetObjectState(), o});
+}
+
+void Scene::RestoreScene()
+{
+  for (auto& [state, o] : _sceneSnapshot)
+  {
+    o->SetObjectState(state);
+    o->UpdateModel();
+  }
+}
+
+void Scene::FrameBackward()
+{
+  if (IsPaused())
+  {
+    TogglePause();
+    RestoreScene();
+    TogglePause();
+  }
+}
+
+void Scene::FrameForward(float deltaTime)
+{
+  SaveScene();
+  size_t totalLoops = 0;
+  deltaTime *= _timeMultiplier;
+  UpdatePos(deltaTime);
+  // do not calculate, just check
+  if (DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+  {
+    bool colDetected;
+    float timeLeft = deltaTime;
+    float updateTimeGran = deltaTime;
+    // controls the detection granularity
+    // could be made dependent on fastest relative collision speed for even better performance
+    size_t const divDepthMax = 6;
+    size_t maxTries = 50; // if we somehow get stuck
+    size_t resolvedNumberForDebug = 0; // if we somehow get stuck
+
+    while (true)
+    {
+      // reset depth
+      size_t divDepth = 0; // 0 = full time step
+      // bool breakNow = false; // FOR DEBUGGING
+      do
+      {
+        totalLoops++; // DEBUG TEST
+        // 1) go to previous position
+        StepBackObjects();
+        // 2) sub-divide
+        updateTimeGran /= 2;
+        divDepth++;
+        // 3) move objects forward again, but only with half the timestep
+        UpdatePos(updateTimeGran);
+        std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
+      }
+      while ((colDetected = DetectCollisions(CollisionDetectionStop::kStopOnFirst)) && // keep dividing while we have a collision AND
+              (divDepth != divDepthMax));                       // not reached the max binary depth
+      if (timeLeft <= updateTimeGran)
+      {
+        // the whole timesteps (deltaTime) has been updated
+        break;
+      }
+      timeLeft -= updateTimeGran;
+      std::cout << "Time left: " << timeLeft << std::endl;
+      if (colDetected)
+      {
+        resolvedNumberForDebug++;
+        // resolve the collisions
+        if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
+        {
+          std::cout << "UNEXPECTED!\n";
+        }
+        else
+        {
+          float colStartTime = (deltaTime - timeLeft);
+          std::cout << "Collision between " << colStartTime << " - " << (colStartTime + updateTimeGran) << std::endl;
+        }
+      }
+      updateTimeGran = timeLeft;
+      // try to move to the end of the timestep
+      UpdatePos(timeLeft);
+      if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+      {
+        // if no collisions to resolve, exit at the final time step
+        break;
+      }
+      if (maxTries-- == 0)
+      {
+        // TODO: if we're frame forwarding we should NOT set this
+        _isPaused = true;
+        std::cout << "EMERGENCY BREAK!! Timeleft: " << timeLeft << std::endl;
+        // emergency break - something went wrong!
+        break;
+      }
+    }
+    std::cout << "Total loops: " <<  totalLoops << "  RESOLVED " << resolvedNumberForDebug << "\n";
+  }
+}
+
 void Scene::UpdateScene(float const deltaTime)
 {
+  if (!_isPaused) 
+  {
+    FrameForward(deltaTime);
+  }
+
   glm::mat4 projection = glm::perspective(glm::radians(_camera.GetZoom()), (float)_width / (float)_height, 0.1f, 100.0f);
   glm::mat4 view = _camera.GetViewMatrix();
 
@@ -49,97 +170,6 @@ void Scene::UpdateScene(float const deltaTime)
   _shader.setMat4("projection", projection);
   _shader.setMat4("view", view);
 
-  size_t totalLoops = 0;
-  if (!_isPaused) 
-  {
-    UpdatePos(deltaTime);
-    // do not calculate, just check
-    if (DetectCollisions(CollisionDetectionStop::kStopOnFirst))
-    {
-      bool colDetected;
-      float timeLeft = deltaTime;
-      float updateTimeGran = deltaTime;
-      // controls the detection granularity
-      // could be made dependent on fastest relative collision speed for even better performance
-      const size_t divDepthMax = 6;
-      size_t maxTries = 50; // if we somehow get stuck
-      size_t resolvedNumberForDebug = 0; // if we somehow get stuck
-
-    float minDeltaTime = deltaTime;
-      // MIN TIME STEP:
-      for (size_t i = 0; i < divDepthMax; i++)
-      {
-        minDeltaTime /= 2;
-      }
-
-      while (true)
-      {
-        // reset depth
-        size_t divDepth = 0; // 0 = full time step
-        // bool breakNow = false; // FOR DEBUGGING
-        do
-        {
-          totalLoops++; // DEBUG TEST
-          // 1) go to previous position
-          StepBackObjects();
-          // sub-divide
-          updateTimeGran /= 2;
-          // DEBUG /DEVELOP CODE!
-          // if (updateTimeGran < minDeltaTime)
-          // {
-          //   updateTimeGran = minDeltaTime;
-          //   if (updateTimeGran > timeLeft)
-          //   {
-          //     updateTimeGran = timeLeft;
-          //   }
-          //   breakNow = true;
-          // }
-          divDepth++;
-          // move objects forward, but with only half the time step
-          UpdatePos(updateTimeGran);
-          std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
-        }
-        while ((colDetected = DetectCollisions(CollisionDetectionStop::kStopOnFirst)) && // keep dividing while we have a collision AND
-                (divDepth != divDepthMax));                       // not reached the max binary depth
-        if (timeLeft <= updateTimeGran)
-        {
-          // the whole timesteps (deltaTime) has been updated
-          break;
-        }
-        timeLeft -= updateTimeGran;
-        std::cout << "Time left: " << timeLeft << std::endl;
-        if (colDetected)
-        {
-          resolvedNumberForDebug++;
-          // resolve the collisions
-          if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
-          {
-            std::cout << "UNEXPECTED!\n";
-          }
-          else
-          {
-            float colStartTime = (deltaTime - timeLeft);
-            std::cout << "Collision between " << colStartTime << " - " << (colStartTime + updateTimeGran) << std::endl;
-          }
-        }
-        updateTimeGran = timeLeft;
-        // try to move to the end of the timestep
-        UpdatePos(timeLeft);
-        if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
-        {
-          // if no collisions to resolve, exit at the final time step
-          break;
-        }
-        if (maxTries-- == 0)
-        {
-          std::cout << "EMERGENCY BREAK!! Timeleft: " << timeLeft << std::endl;
-          // emergency break - something went wrong!
-          break;
-        }
-      }
-      std::cout << "Total loops: " <<  totalLoops << "  RESOLVED " << resolvedNumberForDebug << "\n";
-    }
-  }
   
   DrawObjects();
   _colPointDbg.Draw(projection, _isPaused);
@@ -173,7 +203,7 @@ void Scene::PrintSummedVelAndRot() const
   std::cout << "Total rot_vel = " << glm::to_string(totalRotVel)  << "|" << std::to_string(glm::length(totalRotVel))  << "|\n";
 }
 
-void Scene::AddObject(Object* obj, TextureManager::EnumTexture textureEnum/*  = TextureManager::kDan */)
+void Scene::AddObject(Object* obj, TextureManager::Texture textureEnum/*  = TextureManager::kDan */)
 {
   std::string concName;
   for (auto it = _objects.begin() ; it != _objects.end(); ++it)
@@ -192,7 +222,7 @@ void Scene::setColPointDebugObject(Object* obj)
 {
   // FOR DEBUGGING - FIND MORE ELEGANT WAY TO DO THIS
   _colDebugObject = obj;
-  _colDebugObject->SetTextureId(TextureManager::kMetal, &_textureManager);
+  _colDebugObject->SetTextureId(TextureManager::Texture::kMetal, &_textureManager);
 }
 
 void Scene::SetColNormalDebugObject(std::vector<Object*>& obj, size_t index)
@@ -217,7 +247,7 @@ void Scene::PrintInfoForSelected() const
 }
 
 // helper function 
-void Scene::InsertLSA(std::string& concName, sLastSeparatingAxis& lsa)
+void Scene::InsertLSA(std::string& concName, LastSeparatingAxis& lsa)
 {
   if (false == _lastSeparatingAxis.insert({concName, lsa}).second) // if already inserted...
     _lastSeparatingAxis[concName] = lsa;                           // ...overwrite
@@ -260,7 +290,7 @@ void Scene::DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(glm::vec3& colPoint, glm::vec3& 
 //        join threads in the end
 bool Scene::DetectCollisions(CollisionDetectionStop const stopWhen) //! THIS SHOULD BE CONST!
 {
-  sLastSeparatingAxis lsa;
+  LastSeparatingAxis lsa;
   bool withinSphere;
   std::string concName;
   /* 
@@ -398,9 +428,9 @@ void Scene::DrawOverlay()
     {
       // positions          // texture Coords
       -scale, -scale, -scale,  //0.0f, 0.0f,
-        scale, -scale, -scale,  //1.0f, 0.0f,
-        scale,  scale, -scale,  //1.0f, 1.0f,
-        scale,  scale, -scale,  //1.0f, 1.0f,
+       scale, -scale, -scale,  //1.0f, 0.0f,
+       scale,  scale, -scale,  //1.0f, 1.0f,
+       scale,  scale, -scale,  //1.0f, 1.0f,
       -scale,  scale, -scale,  //0.0f, 1.0f,
       -scale, -scale, -scale   //0.0f, 0.0f,
     };
@@ -444,6 +474,7 @@ void Scene::SelectNearestObjectPointedAt()
   auto const& dRay = _camera.GetFront(); // must be normalized!
   float minDist = INFINITY;
   Object* objPointedAt;
+  bool objectFound = false;
   // dRay = glm::normalize(dRay);
   
   for (auto& o : _objects)
@@ -456,10 +487,13 @@ void Scene::SelectNearestObjectPointedAt()
       {
         minDist = dist;
         objPointedAt = o;
+        objectFound = true;
       }
     }
   }
 
+  if (!objectFound)
+    return;
 
   bool isSel = objPointedAt->IsSelected();
   objPointedAt->SetIsSelected(!isSel); // toggle selection

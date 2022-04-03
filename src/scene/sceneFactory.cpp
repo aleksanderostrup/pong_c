@@ -4,11 +4,10 @@
 #include "box.h"
 #include "cube.h"
 
-SceneFactory::SceneFactory(Camera const& camera, bool const& isPaused, uint32_t const& width, uint32_t const& height)
+SceneFactory::SceneFactory(Camera const& camera, uint32_t const& width, uint32_t const& height)
  :  mCamera(camera)
  ,  mWidth(width)
  ,  mHeight(height)
- ,  mIsPaused(isPaused)
 {
 }
 
@@ -79,10 +78,10 @@ static void PopulateSceneTest1(Scene& scene)
     // scene.AddObject(plane1);
     // scene.AddObject(plane2);
     scene.AddObject(cube1);
-    scene.AddObject(cube2, TextureManager::kMetal);
+    scene.AddObject(cube2, TextureManager::Texture::kMetal);
     scene.AddObject(cube3);
     scene.AddObject(cube4);
-    scene.AddObject(cube5, TextureManager::kRedWindow);
+    scene.AddObject(cube5, TextureManager::Texture::kRedWindow);
     scene.AddObject(cube6);
     scene.AddObject(cube9);
     // scene.AddObject(cube7);
@@ -252,9 +251,9 @@ static void PopulateSceneTest4(Scene& scene)
     scene.AddObject(cube5);
     scene.AddObject(cube6);
     scene.AddObject(cube7);
-    scene.AddObject(cube8, TextureManager::kRedWindow);
-    scene.AddObject(cube9, TextureManager::kMetal);
-    scene.AddObject(hugeCube, TextureManager::kMetal);
+    scene.AddObject(cube8, TextureManager::Texture::kRedWindow);
+    scene.AddObject(cube9, TextureManager::Texture::kMetal);
+    scene.AddObject(hugeCube, TextureManager::Texture::kMetal);
     
 }
 
@@ -296,24 +295,24 @@ static void PopulateSceneTest5(Scene& scene)
     scene.AddObject(cube5);
     // scene.AddObject(cube6);
     // scene.AddObject(cube7);
-    // scene.AddObject(cube8, TextureManager::kRedWindow);
-    // scene.AddObject(cube9, TextureManager::kMetal);
-    // scene.AddObject(hugeCube, TextureManager::kMetal);
+    // scene.AddObject(cube8, TextureManager::Texture::kRedWindow);
+    // scene.AddObject(cube9, TextureManager::Texture::kMetal);
+    // scene.AddObject(hugeCube, TextureManager::Texture::kMetal);
     
 }
 
-Scene SceneFactory::GetScene(EnumScene enumScene)
+Scene SceneFactory::GetScene(SceneId enumScene)
 {
     // create a scene
-    Scene scene(0.01, mIsPaused, mCamera, mWidth, mHeight);
+    Scene scene(0.01, mCamera, mWidth, mHeight);
     
     switch (enumScene)
     {
-        case kSceneTest1: PopulateSceneTest1(scene); break;
-        case kSceneTest2: PopulateSceneTest2(scene); break;
-        case kSceneTest3: PopulateSceneTest3(scene); break;
-        case kSceneTest4: PopulateSceneTest4(scene); break;
-        case kSceneTest5: PopulateSceneTest5(scene); break;
+        case SceneId::kSceneTest1: PopulateSceneTest1(scene); break;
+        case SceneId::kSceneTest2: PopulateSceneTest2(scene); break;
+        case SceneId::kSceneTest3: PopulateSceneTest3(scene); break;
+        case SceneId::kSceneTest4: PopulateSceneTest4(scene); break;
+        case SceneId::kSceneTest5: PopulateSceneTest5(scene); break;
     }
     // handle debug objects adding centrally
     AddDebugObjects(scene);

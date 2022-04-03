@@ -53,7 +53,6 @@ private:
   int         _inrementCountdown;
 };
 
-
 Object::Object(glm::vec3 position, glm::vec3 scale, const char* name, float mass/*  = 1.0f */)
   : mScale             (scale)
   , mScaleRec          (scale)
@@ -229,7 +228,7 @@ glm::vec3 const& Object::GetEdge(uint32_t index) const
 // SHOULD WE CHECK THE LSA AGAINST THE C_ji MATRIX OR
 // THE OTHER OBJECTS NORMALS? IF TWO OF THESE ARE PARALLEL, WE HAVE 
 // A FACE FACE!
-Object::EnumCollisionType Object::GetCollisionType(const glm::mat3& C_ij, const sLastSeparatingAxis& lsa) const
+Object::CollisionType Object::GetCollisionType(const glm::mat3& C_ij, const LastSeparatingAxis& lsa) const
 {
   for (int col = 0; col < C_ij.length(); col++)
   {
@@ -245,17 +244,17 @@ Object::EnumCollisionType Object::GetCollisionType(const glm::mat3& C_ij, const 
               (C_ij[colCheck] == -lsa.normal))
           {
             std::cout << "Face-Face collision!" << std::endl;
-            return kFaceFace;
+            return CollisionType::kFaceFace;
           }
         }
         // if not it is an edge (but edge on WHICH?!)
         std::cout << "Edge-Face collision!" << std::endl;
-        return kEdgeFace;
+        return CollisionType::kEdgeFace;
       }
     }
   }
   std::cout << "Point collision!" << std::endl;
-  return kPoint;
+  return CollisionType::kPoint;
 }
 
 // following inline functions are helper function for getting
@@ -312,7 +311,7 @@ inline float getPermValue(const glm::vec3& V, const size_t i, const size_t i0)
   return V[getPerm(i, i0)];
 }
 
-inline glm::vec3& getPermValue(sBoundBoxEdges& edges, const size_t i, const size_t i0)
+inline glm::vec3& getPermValue(BoundBoxEdges& edges, const size_t i, const size_t i0)
 {
   return edges[getPerm(i, i0)];
 }
@@ -367,12 +366,12 @@ inline void Object::CalcAbsPos(glm::vec3& p_abs, glm::vec3 const& p_rel, const O
 /* 
   calculates the collision point
 */
-sCollisionPoint Object::GetCollisionPoint(sLastSeparatingAxis const& lsa, glm::mat3 const& C_ij, Object const* obj) const
+CollisionPoint Object::GetCollisionPoint(LastSeparatingAxis const& lsa, glm::mat3 const& C_ij, Object const* obj) const
 {
   const Object* A = this;
   const Object* B = obj;
-  EnumCollisionType collisionType = GetCollisionType(C_ij, lsa);
-  sCollisionPoint colPoint;
+  CollisionType collisionType = GetCollisionType(C_ij, lsa);
+  CollisionPoint colPoint;
 
   // glm::vec3 a_i = 0.5f * A->mScale; // extent in [DCD Table 1, p. 5] is only half of the side length
   // glm::vec3 b_i = 0.5f * B->mScale;
@@ -391,7 +390,7 @@ sCollisionPoint Object::GetCollisionPoint(sLastSeparatingAxis const& lsa, glm::m
     colPoint.y_rel[0] = -sigma * Sign(C_ij[0][index]) * b_i[0];
     colPoint.y_rel[1] = -sigma * Sign(C_ij[1][index]) * b_i[1];
     colPoint.y_rel[2] = -sigma * Sign(C_ij[2][index]) * b_i[2];
-    if ((kFaceFace == collisionType) || (kEdgeFace == collisionType))
+    if ((CollisionType::kFaceFace == collisionType) || (CollisionType::kEdgeFace == collisionType))
     {
       float yj_min;
       float yj_max;
@@ -442,8 +441,8 @@ sCollisionPoint Object::GetCollisionPoint(sLastSeparatingAxis const& lsa, glm::m
   {
     // CAN BE OPTIMIZED WITH A CONST EXPRESSION FOR ALL CASES -- MAKE ALL INLINE HELPER FUNCTION CONST EXPR
     size_t i, j;
-    sBoundBoxEdges& A_edge = *(A->mBoundBoxEdges);
-    sBoundBoxEdges& B_edge = *(B->mBoundBoxEdges);
+    BoundBoxEdges& A_edge = *(A->mBoundBoxEdges);
+    BoundBoxEdges& B_edge = *(B->mBoundBoxEdges);
     getijFromIndex(lsa.index, i, j);
     std::cout << "Before: Collision point rel: "<< glm::to_string(colPoint.x_rel) << std::endl;
     std::cout << "Before: Collision point abs: "<< glm::to_string(colPoint.p_abs) << std::endl;
@@ -603,7 +602,7 @@ static auto CalcRArrays(glm::mat3 const& C_ij, std::array<glm::vec3, 15> const& 
   https://www.geometrictools.com/Documentation/DynamicCollisionDetection.pdf [DCD]
   it is also in the docs/ folder (at the project root dir). Doc will be referenced below.
 */
-std::pair<bool, std::optional<glm::mat3>> Object::CheckCollision(Object* obj, sLastSeparatingAxis* lsa, bool* withinSphere)
+std::pair<bool, std::optional<glm::mat3>> Object::CheckCollision(Object* obj, LastSeparatingAxis* lsa, bool* withinSphere)
 {
   Object* A = this; // alias to help with the naming
   Object* B = obj;  // alias to help with the naming
@@ -672,7 +671,7 @@ std::pair<bool, std::optional<glm::mat3>> Object::CheckCollision(Object* obj, sL
   return {true, C_ij};
 }
 
-void Object::CalcCollision(Object* obj, sCollisionPoint& colPoint, glm::vec3& normal)
+void Object::CalcCollision(Object* obj, CollisionPoint& colPoint, glm::vec3& normal)
 {
   double e = 1.0; // coefficient of restitution. Max 1 (perfect elastic). Min 0 (all kinetic energi lost as heat or deformation) 
   // see article 4 in docs/ and https://en.wikipedia.org/wiki/Collision_response#Impulse-based_contact_model
@@ -757,7 +756,7 @@ bool Object::CheckRayVsBoxCollision(glm::vec3 const& pRay, glm::vec3 const& dRay
   float APmCdU[3];
   // notation from https://www.geometrictools.com/Documentation/IntersectionLineBox.pdf
   glm::vec3 a_i     = 0.5f * mScale; // extent
-  sBoundBoxEdges& U = *mBoundBoxEdges;
+  BoundBoxEdges& U = *mBoundBoxEdges;
   
   // The ray = specific tests .
   for ( int i = 0 ; i < 3 ; ++i )
@@ -792,9 +791,9 @@ bool Object::CheckRayVsBoxCollision(glm::vec3 const& pRay, glm::vec3 const& dRay
   return true;
 }
 
-bool Object::SetTextureId(TextureManager::EnumTexture textureEnum, TextureManager* textureManager)
+bool Object::SetTextureId(TextureManager::Texture textureEnum, TextureManager* textureManager)
 {
-  if (mTextureEnum != TextureManager::kInvalid)
+  if (mTextureEnum != TextureManager::Texture::kInvalid)
   {
     textureManager->DeregisterTexture(textureEnum);
   }

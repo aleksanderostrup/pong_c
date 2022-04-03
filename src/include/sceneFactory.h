@@ -7,7 +7,7 @@ class SceneFactory
 {
   public:
 
-    enum EnumScene 
+    enum class SceneId
     {
         kSceneTest1 = 1,
         kSceneTest2 = 2,
@@ -16,14 +16,13 @@ class SceneFactory
         kSceneTest5 = 5, // only cubes to check for proper beheaviour
     };
     
-    SceneFactory(Camera const& camera, bool const& isPaused, uint32_t const& width, uint32_t const& height);
+    SceneFactory(Camera const& camera, uint32_t const& width, uint32_t const& height);
 
-    Scene GetScene(EnumScene enumScene/* , Shader& shader */);
+    Scene GetScene(SceneId enumScene/* , Shader& shader */);
 
   protected:
 
   private:
-    bool      const& mIsPaused;
     Camera    const& mCamera;
     uint32_t  const& mWidth;
     uint32_t  const& mHeight;

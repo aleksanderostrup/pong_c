@@ -26,7 +26,7 @@
 /* 
   rotated unit vectors aligned with the objects bound box
 */
-typedef struct
+struct BoundBoxEdges
 {
   glm::vec3 Ax;
   glm::vec3 Ay;
@@ -39,7 +39,7 @@ typedef struct
       case 1: return Ay;
       case 2: return Az;
       default: 
-        std::cout << "Error occured accessing sBoundBoxEdges[]. Exiting!" << std::endl;
+        std::cout << "Error occured accessing BoundBoxEdges[]. Exiting!" << std::endl;
         exit(0);
     }
   }
@@ -50,36 +50,35 @@ typedef struct
       << "Ay:" << glm::to_string(Ay) << "\n"
       << "Az:" << glm::to_string(Az) << "\n";
   }
-} sBoundBoxEdges;
+};
 
-typedef struct 
+struct LastSeparatingAxis
 {
   uint32_t index;
   glm::vec3 normal; // collision normal = last separating axis
-} sLastSeparatingAxis;
+};
 
-typedef struct 
+struct CollisionPoint
 {
   glm::vec3 x_rel; // relative to object A
   glm::vec3 y_rel; // relative to object B
   glm::vec3 p_abs; // absolute coordinates
-} sCollisionPoint;
+};
 
 // holds the complete state of the object
-typedef struct
+struct ObjectState
 {
   glm::vec3 velocity;         // dx/dt
   glm::vec3 position;         //  x
   glm::vec3 rotationVelocity; // dw/dt
   glm::vec3 rotation;         //  w
-} sObjectState;
+};
 
 class Object
 {
 public:
 
-  // ! make enum class
-  enum EnumCollisionType
+  enum class CollisionType
   {
     kPoint,
     kEdgeFace,
@@ -90,8 +89,8 @@ public:
 
 protected:
 
-  sObjectState    mState;
-  sObjectState    mRecState;
+  ObjectState     mState;
+  ObjectState     mRecState;
   glm::vec3       mScale;
   glm::vec3       mScaleRec;
   glm::mat4       mModel;
@@ -101,8 +100,8 @@ protected:
   bool            mIgnoreCollision;
   bool            mIsSelected = false;
   const char*     mName;
-  sBoundBoxEdges* mBoundBoxEdges      {nullptr}; // optional ? - for selecting we really need this for now!
-  TextureManager::EnumTexture mTextureEnum{TextureManager::kInvalid};
+  std::unique_ptr<BoundBoxEdges> mBoundBoxEdges; // optional ? - for selecting we really need this for now!
+  TextureManager::Texture mTextureEnum{TextureManager::Texture::kInvalid};
 
   // utility function for loading a 2D texture from file
   // ---------------------------------------------------
@@ -118,9 +117,10 @@ public:
   glm::vec3 GetPosition()           const { return mState.position; };
   glm::vec3 GetVelocity()           const { return mState.velocity; };
   glm::vec3 GetRotationVelocity()   const { return mState.rotationVelocity; };
+  ObjectState GetObjectState()      const { return mState; }
   glm::vec3 const& GetEdge(uint32_t index) const;
-  EnumCollisionType GetCollisionType(const glm::mat3& C_ij, const sLastSeparatingAxis& lsa) const;
-  sCollisionPoint GetCollisionPoint(sLastSeparatingAxis const& lsa, glm::mat3 const& C_ij, Object const* obj) const;
+  CollisionType GetCollisionType(const glm::mat3& C_ij, const LastSeparatingAxis& lsa) const;
+  CollisionPoint GetCollisionPoint(LastSeparatingAxis const& lsa, glm::mat3 const& C_ij, Object const* obj) const;
 
   void CheckForErrors() const;
   bool IgnoreCollision();
@@ -133,6 +133,7 @@ public:
   // radians to rotate. Set as 0 length vector to set as non-rotated.
   void SetRotation(const glm::vec3& rotation)                   { mState.rotation = rotation;                 }
   void setVelocity(const glm::vec3& velocity)                   { mState.velocity = velocity;                 }
+  void SetObjectState(ObjectState const& state)                 { mState = state;                             }
   void SetScale(const glm::vec3& scale)                         { mScale = scale;                             }
   void SetRelativeScale(const float scale)                      { mScale *= scale;                            }
   void RecordScale()                                            { mScaleRec = mScale;                         }
@@ -140,8 +141,8 @@ public:
   void SetRotationVelocity(const glm::vec3& rotationVelocity)   { mState.rotationVelocity = rotationVelocity; }
   void SetPosition(glm::vec3 pos)                               { mState.position = pos;                      } // debug only!
   void SetDebugInfo(bool on);
-  std::pair<bool, std::optional<glm::mat3>> CheckCollision(Object* obj, sLastSeparatingAxis* lsa, bool* withinSphere);
-  void CalcCollision(Object* obj, sCollisionPoint& colPoint, glm::vec3& normal);
+  std::pair<bool, std::optional<glm::mat3>> CheckCollision(Object* obj, LastSeparatingAxis* lsa, bool* withinSphere);
+  void CalcCollision(Object* obj, CollisionPoint& colPoint, glm::vec3& normal);
   bool CheckRayVsBoxCollision(glm::vec3 const& pRay, glm::vec3 const& dRay);
   const char* GetName() const { return mName; };
   void RecordState()     { mRecState = mState; }
@@ -149,7 +150,7 @@ public:
   bool IsSelected()      { return mIsSelected; }
   void SetIsSelected(bool const selected) { mIsSelected = selected; }
   auto ActivateTextureId(TextureManager* textureManager) { return textureManager->ActivateTexture(mTextureEnum); }
-  bool SetTextureId(TextureManager::EnumTexture textureEnum, TextureManager* textureManager);
+  bool SetTextureId(TextureManager::Texture textureEnum, TextureManager* textureManager);
   glm::mat4& GetModel()  { return mModel; }
   inline void CalcAbsPos(glm::vec3& p_abs, glm::vec3 const& p_rel, const Object* obj) const;
 
