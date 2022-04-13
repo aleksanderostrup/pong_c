@@ -36,6 +36,7 @@ public:
   void ModifyTime(float const modifier) { _timeMultiplier *= modifier; }
   void SaveScene();
   void RestoreScene();
+  void ToggleFrameForwardDebug() { _frameForwardDebug = !_frameForwardDebug; }
 
   void PrintSummedVelAndRot() const;
   void AddObject(Object* obj, TextureManager::Texture textureEnum = TextureManager::Texture::kDan);
@@ -72,7 +73,8 @@ private:
   Shader                                        _shader;
   Shader                                        _shaderSingleColor;
   ColPointDbg                                   _colPointDbg;
-  bool                                          _stupidDebugThingStopOnFirst = false;          
+  bool                                          _stupidDebugThingStopOnFirst = false;
+  bool                                          _frameForwardDebug = false;
 
   // helper function 
   void InsertLSA(std::string& concName, LastSeparatingAxis& lsa);
@@ -81,6 +83,8 @@ private:
   bool DetectCollisions(CollisionDetectionStop const stopWhen);
   void UpdatePos(float deltaTime);
   void FrameForward(float deltaTime);
+  void FrameForwardNormal(float const deltaTime);
+  void FrameForwardDebug(float const deltaTime);
   void DrawObjects();
   void DrawDebugObject();
   void DrawOverlay();

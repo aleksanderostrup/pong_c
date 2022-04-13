@@ -73,7 +73,208 @@ void Scene::FrameBackward()
   }
 }
 
-void Scene::FrameForward(float deltaTime)
+
+void Scene::FrameForward(float const deltaTime)
+{
+  if (_frameForwardDebug)
+  {
+    FrameForwardDebug(deltaTime);
+  }
+  else
+  {
+    FrameForwardNormal(deltaTime);
+  }
+}
+
+struct FrameForwardState
+{
+
+  enum class State
+  {
+    Stopped,
+    TimeDividing_Step1,
+    TimeDividing_Step2,
+    CheckGraunlarity,
+    HandleAllCollisions,
+    CheckFinished
+  };
+
+  void Reset(float const deltaTime)
+  {
+    inProgress      = true;
+    timeLeft        = deltaTime;
+    updateTimeGran  = deltaTime;
+    maxTries        = 50;
+    resolvedNumberForDebug = 0;
+    allWasHandled   = false;
+  }
+
+  // getters
+  bool  InProgress() const { return inProgress; }
+  float GetTimeGranularity() const { return updateTimeGran; }
+  bool  MaxDepthReached() const { return (divDepth == divDepthMax); }
+  bool  TimeLeftLessThanGranularity() const { return (timeLeft <= updateTimeGran); }
+  float GetTimeLeft() const { return timeLeft; }
+  float GetDivDepth() const { return divDepth; }
+
+  void ResetDivDepth() { divDepth = 0; }
+  void IncrDivDepth() {  divDepth++; }
+  void SetResolved(bool const resolved)   { inProgress = !resolved; }
+  void DivDepth()
+  {
+    updateTimeGran /= 2;
+    divDepth++;
+  }
+  void UpdateTime()
+  {
+    timeLeft -= updateTimeGran;
+    std::cout << "Time left: " << timeLeft << std::endl;
+  }
+  void SetUpdateTimeGranToTimeLeft()
+  {
+    updateTimeGran = timeLeft;
+  }
+  bool UpdateMaxTries()
+  {
+    return (maxTries-- == 0);
+  }
+
+  State state = State::Stopped;
+  bool  allWasHandled; // for checking if we did the HandleAllCollisions state
+
+private:
+    bool inProgress = false;
+    bool colDetected;
+    float timeLeft;
+    float updateTimeGran;
+    
+
+    size_t const divDepthMax = 6;
+    size_t maxTries;                    // if we somehow get stuck
+    size_t resolvedNumberForDebug = 0;  // if we somehow get stuck
+    size_t divDepth;
+};
+
+// TODO: we should disable or at least handle frameBackwards
+void Scene::FrameForwardDebug(float deltaTime)
+{
+  static FrameForwardState stateFF;
+  using State = FrameForwardState::State;
+  // SaveScene();
+
+  switch (stateFF.state)
+  {
+    case State::Stopped:
+    {
+      std::cout << "Starting machine\n";
+      deltaTime *= _timeMultiplier;
+      std::cout << "Updating position\n";
+      stateFF.Reset(deltaTime);
+      UpdatePos(deltaTime);
+      // if no detection, we resolve
+      stateFF.SetResolved(!DetectCollisions(CollisionDetectionStop::kStopOnFirst));
+    
+      stateFF.state = stateFF.InProgress() ? State::TimeDividing_Step1 : State::Stopped;
+      break;
+    }
+    case State::TimeDividing_Step1:
+    {
+      std::cout << "Resetting depth\n";
+      stateFF.ResetDivDepth();
+      stateFF.state = State::TimeDividing_Step2;
+    } [[fallthrough]];
+    case State::TimeDividing_Step2:
+    {
+      std::cout << "TimeDividing_Step2 -- stepping back objects\n";
+      // 1) go to previous position
+      StepBackObjects();
+      // 2) sub-divide
+      // updateTimeGran /= 2;
+      // divDepth++;
+      stateFF.DivDepth();
+      std::cout << "Updating position\n";
+      // 3) move objects forward again, but only with half the timestep
+      UpdatePos(stateFF.GetTimeGranularity());
+      std::cout << "Div depth is : " << stateFF.GetDivDepth() << " dt = " << stateFF.GetTimeGranularity() << std::endl;
+      stateFF.SetResolved(!DetectCollisions(CollisionDetectionStop::kStopOnFirst));
+
+      if (!stateFF.InProgress() ||        // keep dividing while we have a collision AND
+          (stateFF.MaxDepthReached()))    // not reached the max binary depth
+      {
+        
+        stateFF.state = State::CheckGraunlarity;
+      }
+      break;
+    }
+    case State::CheckGraunlarity:
+    {
+      std::cout << "Checking granularity\n";
+      if (stateFF.TimeLeftLessThanGranularity())
+      {
+        std::cout << "Resolved here\n";
+        stateFF.SetResolved(true);
+        // the whole timesteps (deltaTime) has been updated
+        stateFF.state = State::Stopped;
+      }
+      else
+      {
+        stateFF.state = State::HandleAllCollisions;
+        stateFF.UpdateTime();
+      }
+      break;
+    }
+    case State::HandleAllCollisions:
+    {
+      std::cout << "HandleAllCollisions\n";
+      if (stateFF.InProgress())
+      {
+        stateFF.allWasHandled = true;
+        // resolvedNumberForDebug++;
+        // resolve the collisions
+        if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
+        {
+          std::cout << "UNEXPECTED!\n";
+        }
+
+      }
+      stateFF.state = State::CheckFinished;
+      break;
+    }
+    case State::CheckFinished:
+    {
+      std::cout << "Check finished\n";
+      // updateTimeGran = timeLeft;
+      stateFF.SetUpdateTimeGranToTimeLeft();
+      std::cout << "Updating position\n";
+      // try to move to the end of the timestep
+      UpdatePos(stateFF.GetTimeLeft());
+      if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+      {
+        stateFF.SetResolved(true);
+        stateFF.state = State::Stopped;
+      }
+      else if (stateFF.UpdateMaxTries())
+      {
+        std::cout << "EMERGENCY BREAK!! Timeleft: " << stateFF.GetTimeLeft() << std::endl;
+        stateFF.SetResolved(true); // TODO: set with error?
+        stateFF.state = State::Stopped;
+        if (!stateFF.allWasHandled)
+        {
+          std::cout << "Wasn't handled!\n";
+          exit(0);
+        }
+      }
+      else
+      {
+        stateFF.state = State::TimeDividing_Step1;
+        stateFF.allWasHandled = false;
+      }
+      break;
+    }
+  }
+}
+
+void Scene::FrameForwardNormal(float deltaTime)
 {
   SaveScene();
   size_t totalLoops = 0;
