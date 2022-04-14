@@ -18,6 +18,7 @@ target_include_directories(phys_engine
 add_subdirectory(commands)
 add_subdirectory(objects)
 add_subdirectory(inputs)
+add_subdirectory(collisions)
 add_subdirectory(scene)
 add_subdirectory(setup)
 add_subdirectory(texture)
@@ -34,6 +35,7 @@ target_link_libraries(phys_engine
   thirdparty
   glfw
   objects
+  collisions
   X11
   Xi
   dl

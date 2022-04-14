@@ -6,16 +6,19 @@
 #include <array>
 
 
-inline float Sign(float const v)
+//! delete (moved to collisionDetector)
+static inline float Sign(float const v)
 {
   return (v < 0 ? -1.0f : 1.0f);
 }
 
-float GetSigma(const glm::vec3& V, glm::vec3 const& D)
+//! delete (moved to collisionDetector)
+static float GetSigma(const glm::vec3& V, glm::vec3 const& D)
 {
   return Sign(glm::dot(V, D));
 }
 
+//! delete (moved to collisionDetector)
 class Counter
 {
 public:

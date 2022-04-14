@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "skybox.h"
 #include "line.h"
+#include "collisionDetector.h"
 
 struct ColPointDbg
 {
@@ -48,6 +49,7 @@ private:
 
   // using ObjectPtrType = std::unique_ptr<Object>;
 
+  // TODO: delete after implemented in collisionDetector.cpp
   enum class CollisionDetectionStop 
   {
     kStopOnFirst    = 1,
@@ -75,12 +77,13 @@ private:
   ColPointDbg                                   _colPointDbg;
   bool                                          _stupidDebugThingStopOnFirst = false;
   bool                                          _frameForwardDebug = false;
+  CollisionDetector                             _collisionDetector;
 
   // helper function 
   void InsertLSA(std::string& concName, LastSeparatingAxis& lsa);
   void DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(glm::vec3& colPoint, glm::vec3& colNormal);
   void DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(glm::vec3& colPoint, glm::vec3& colNormal);
-  bool DetectCollisions(CollisionDetectionStop const stopWhen);
+  // bool DetectCollisions(CollisionDetectionStop const stopWhen);
   void UpdatePos(float deltaTime);
   void FrameForward(float deltaTime);
   void FrameForwardNormal(float const deltaTime);

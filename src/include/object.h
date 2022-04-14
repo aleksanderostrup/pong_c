@@ -52,6 +52,7 @@ struct BoundBoxEdges
   }
 };
 
+// TODO: should only be in collisionDetector
 struct LastSeparatingAxis
 {
   uint32_t index;
@@ -158,6 +159,8 @@ protected:
     glm::mat3 GetRotationMatrix() const;
 
 private:
+  // TODO: delete once refactor finished
+  friend class CollisionDetector;
 
   virtual void UpdateBoundBox() = 0;
 

@@ -172,7 +172,7 @@ void Scene::FrameForwardDebug(float deltaTime)
       stateFF.Reset(deltaTime);
       UpdatePos(deltaTime);
       // if no detection, we resolve
-      stateFF.SetResolved(!DetectCollisions(CollisionDetectionStop::kStopOnFirst));
+      stateFF.SetResolved(!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects));
     
       stateFF.state = stateFF.InProgress() ? State::TimeDividing_Step1 : State::Stopped;
       break;
@@ -196,7 +196,7 @@ void Scene::FrameForwardDebug(float deltaTime)
       // 3) move objects forward again, but only with half the timestep
       UpdatePos(stateFF.GetTimeGranularity());
       std::cout << "Div depth is : " << stateFF.GetDivDepth() << " dt = " << stateFF.GetTimeGranularity() << std::endl;
-      stateFF.SetResolved(!DetectCollisions(CollisionDetectionStop::kStopOnFirst));
+      stateFF.SetResolved(!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects));
 
       if (!stateFF.InProgress() ||        // keep dividing while we have a collision AND
           (stateFF.MaxDepthReached()))    // not reached the max binary depth
@@ -231,7 +231,7 @@ void Scene::FrameForwardDebug(float deltaTime)
         stateFF.allWasHandled = true;
         // resolvedNumberForDebug++;
         // resolve the collisions
-        if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
+        if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kHandleAll, _objects))
         {
           std::cout << "UNEXPECTED!\n";
         }
@@ -248,7 +248,7 @@ void Scene::FrameForwardDebug(float deltaTime)
       std::cout << "Updating position\n";
       // try to move to the end of the timestep
       UpdatePos(stateFF.GetTimeLeft());
-      if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+      if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects))
       {
         stateFF.SetResolved(true);
         stateFF.state = State::Stopped;
@@ -274,6 +274,7 @@ void Scene::FrameForwardDebug(float deltaTime)
   }
 }
 
+
 void Scene::FrameForwardNormal(float deltaTime)
 {
   SaveScene();
@@ -281,7 +282,7 @@ void Scene::FrameForwardNormal(float deltaTime)
   deltaTime *= _timeMultiplier;
   UpdatePos(deltaTime);
   // do not calculate, just check
-  if (DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+  if (_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects))
   {
     bool colDetected;
     float timeLeft = deltaTime;
@@ -309,7 +310,7 @@ void Scene::FrameForwardNormal(float deltaTime)
         UpdatePos(updateTimeGran);
         std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
       }
-      while ((colDetected = DetectCollisions(CollisionDetectionStop::kStopOnFirst)) && // keep dividing while we have a collision AND
+      while ((colDetected = _collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects)) && // keep dividing while we have a collision AND
               (divDepth != divDepthMax));                       // not reached the max binary depth
       if (timeLeft <= updateTimeGran)
       {
@@ -322,7 +323,7 @@ void Scene::FrameForwardNormal(float deltaTime)
       {
         resolvedNumberForDebug++;
         // resolve the collisions
-        if (!DetectCollisions(CollisionDetectionStop::kHandleAll))
+        if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kHandleAll, _objects))
         {
           std::cout << "UNEXPECTED!\n";
         }
@@ -335,7 +336,7 @@ void Scene::FrameForwardNormal(float deltaTime)
       updateTimeGran = timeLeft;
       // try to move to the end of the timestep
       UpdatePos(timeLeft);
-      if (!DetectCollisions(CollisionDetectionStop::kStopOnFirst))
+      if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects))
       {
         // if no collisions to resolve, exit at the final time step
         break;
@@ -489,59 +490,59 @@ void Scene::DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(glm::vec3& colPoint, glm::vec3& 
 
 // TODO : parallelize if we have more than N objects
 //        join threads in the end
-bool Scene::DetectCollisions(CollisionDetectionStop const stopWhen) //! THIS SHOULD BE CONST!
-{
-  LastSeparatingAxis lsa;
-  bool withinSphere;
-  std::string concName;
-  /* 
-    OPTIMIZE:
-    record the last 2 objects that collided, and start with them for major speed up
-    (at least in case we're in scenario: stopWhen = CollisionDetectionStop::kStopOnFirst)
-  */
+// bool Scene::DetectCollisions(CollisionDetectionStop const stopWhen) //! THIS SHOULD BE CONST!
+// {
+//   LastSeparatingAxis lsa;
+//   bool withinSphere;
+//   std::string concName;
+//   /* 
+//     OPTIMIZE:
+//     record the last 2 objects that collided, and start with them for major speed up
+//     (at least in case we're in scenario: stopWhen = CollisionDetector::DetectStop::kStopOnFirst)
+//   */
 
-  for (auto it = _objects.begin() ; it != _objects.end(); ++it)
-  {
-    // only check all objects that's after the one we're currently checking (to avoid double checks)
-    // this also takes care of not counting any collision twice
-    for (auto it2 = (it + 1); it2 != _objects.end(); ++it2)
-    {
-      // consider having a separate vector where this is filtered out when added
-      if ((*it)->IgnoreCollision() || (*it2)->IgnoreCollision())
-      {
-        continue;
-      }
+//   for (auto it = _objects.begin() ; it != _objects.end(); ++it)
+//   {
+//     // only check all objects that's after the one we're currently checking (to avoid double checks)
+//     // this also takes care of not counting any collision twice
+//     for (auto it2 = (it + 1); it2 != _objects.end(); ++it2)
+//     {
+//       // consider having a separate vector where this is filtered out when added
+//       if ((*it)->IgnoreCollision() || (*it2)->IgnoreCollision())
+//       {
+//         continue;
+//       }
 
-      // objects shall have CheckCollision that takes in an object
-      if (auto const [collision, C_ij] = (*it)->CheckCollision(*it2, &lsa, &withinSphere) ; collision )
-      {
-        if (CollisionDetectionStop::kStopOnFirst == stopWhen)
-        {
-          return true;
-        }
-        concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
+//       // objects shall have CheckCollision that takes in an object
+//       if (auto const [collision, C_ij] = (*it)->CheckCollision(*it2, &lsa, &withinSphere) ; collision )
+//       {
+//         if (CollisionDetector::DetectStop::kStopOnFirst == stopWhen)
+//         {
+//           return true;
+//         }
+//         concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
 
-        std::cout << "Retrieveing ConcName = " << concName << " and normal = " << glm::to_string(_lastSeparatingAxis[concName].normal) << "\n";
-        auto colPoint = (*it)->GetCollisionPoint(_lastSeparatingAxis[concName], C_ij.value(), *it2);
-        DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(colPoint.p_abs, _lastSeparatingAxis[concName].normal);
+//         std::cout << "Retrieveing ConcName = " << concName << " and normal = " << glm::to_string(_lastSeparatingAxis[concName].normal) << "\n";
+//         auto colPoint = (*it)->GetCollisionPoint(_lastSeparatingAxis[concName], C_ij.value(), *it2);
+//         DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(colPoint.p_abs, _lastSeparatingAxis[concName].normal);
         
-        (*it)->CalcCollision(*it2, colPoint, _lastSeparatingAxis[concName].normal);
-        return true;
-      }
-      // start tracking last separating axis when inside sphere
-      else if (withinSphere)
-      {
-        concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
-        glm::vec3 tmpPos = (*it)->GetPosition();
-        DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(tmpPos, lsa.normal);
-        DrawDebugObject();
-        InsertLSA(concName, lsa);
-      }
+//         (*it)->CalcCollision(*it2, colPoint, _lastSeparatingAxis[concName].normal);
+//         return true;
+//       }
+//       // start tracking last separating axis when inside sphere
+//       else if (withinSphere)
+//       {
+//         concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
+//         glm::vec3 tmpPos = (*it)->GetPosition();
+//         DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(tmpPos, lsa.normal);
+//         DrawDebugObject();
+//         InsertLSA(concName, lsa);
+//       }
       
-    }
-  }
-  return false;
-}
+//     }
+//   }
+//   return false;
+// }
 
 void Scene::UpdatePos(float deltaTime)
 {
