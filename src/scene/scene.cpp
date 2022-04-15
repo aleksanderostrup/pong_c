@@ -354,6 +354,86 @@ void Scene::FrameForwardNormal(float deltaTime)
   }
 }
 
+// TODO: use DetectFirstCollisionTime and rewrite!
+void Scene::FrameForwardNormalNew(float deltaTime)
+{
+  SaveScene();
+  size_t totalLoops = 0;
+  deltaTime *= _timeMultiplier;
+  UpdatePos(deltaTime);
+  // do not calculate, just check
+  if (_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects))
+  {
+    bool colDetected;
+    float timeLeft = deltaTime;
+    float updateTimeGran = deltaTime;
+    // controls the detection granularity
+    // could be made dependent on fastest relative collision speed for even better performance
+    size_t const divDepthMax = 6;
+    size_t maxTries = 50; // if we somehow get stuck
+    size_t resolvedNumberForDebug = 0; // if we somehow get stuck
+
+    while (true)
+    {
+      // reset depth
+      size_t divDepth = 0; // 0 = full time step
+      // bool breakNow = false; // FOR DEBUGGING
+      do
+      {
+        totalLoops++; // DEBUG TEST
+        // 1) go to previous position
+        StepBackObjects();
+        // 2) sub-divide
+        updateTimeGran /= 2;
+        divDepth++;
+        // 3) move objects forward again, but only with half the timestep
+        UpdatePos(updateTimeGran);
+        std::cout << "Div depth is : " << divDepth << " dt = " << updateTimeGran << std::endl;
+      }
+      while ((colDetected = _collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects)) && // keep dividing while we have a collision AND
+              (divDepth != divDepthMax));                       // not reached the max binary depth
+      if (timeLeft <= updateTimeGran)
+      {
+        // the whole timesteps (deltaTime) has been updated
+        break;
+      }
+      timeLeft -= updateTimeGran;
+      std::cout << "Time left: " << timeLeft << std::endl;
+      if (colDetected)
+      {
+        resolvedNumberForDebug++;
+        // resolve the collisions
+        if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kHandleAll, _objects))
+        {
+          std::cout << "UNEXPECTED!\n";
+        }
+        else
+        {
+          float colStartTime = (deltaTime - timeLeft);
+          std::cout << "Collision between " << colStartTime << " - " << (colStartTime + updateTimeGran) << std::endl;
+        }
+      }
+      updateTimeGran = timeLeft;
+      // try to move to the end of the timestep
+      UpdatePos(timeLeft);
+      if (!_collisionDetector.DetectCollision(CollisionDetector::DetectStop::kStopOnFirst, _objects))
+      {
+        // if no collisions to resolve, exit at the final time step
+        break;
+      }
+      if (maxTries-- == 0)
+      {
+        // TODO: if we're frame forwarding we should NOT set this
+        _isPaused = true;
+        std::cout << "EMERGENCY BREAK!! Timeleft: " << timeLeft << std::endl;
+        // emergency break - something went wrong!
+        break;
+      }
+    }
+    std::cout << "Total loops: " <<  totalLoops << "  RESOLVED " << resolvedNumberForDebug << "\n";
+  }
+}
+
 void Scene::UpdateScene(float const deltaTime)
 {
   if (!_isPaused) 

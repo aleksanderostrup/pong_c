@@ -23,7 +23,6 @@ Box::Box(glm::vec3 position, glm::vec3 scale, const char* name, float mass) :
   mInertiaTensor = CalcInertiaTensor(scale, mass);
   this->UpdateModel();
   noOfBoxes++;
-  mBoundBoxEdges = std::make_unique<BoundBoxEdges>();
   UpdateBoundBox();
   // first box
   if (noOfBoxes == 1)
@@ -123,9 +122,9 @@ void Box::UpdateBoundBox()
   // get upper 3x3 matrix (Rotation matrix) from the model matrix
   glm::mat3 rotM  { GetRotationMatrix() };
   // // they have to be unit vectors!
-  mBoundBoxEdges->Ax = glm::normalize(rotM[0]);
-  mBoundBoxEdges->Ay = glm::normalize(rotM[1]);
-  mBoundBoxEdges->Az = glm::normalize(rotM[2]);
+  mBoundBoxEdges.Ax = glm::normalize(rotM[0]);
+  mBoundBoxEdges.Ay = glm::normalize(rotM[1]);
+  mBoundBoxEdges.Az = glm::normalize(rotM[2]);
 }
 
 

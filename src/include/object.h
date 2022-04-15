@@ -31,7 +31,7 @@ struct BoundBoxEdges
   glm::vec3 Ax;
   glm::vec3 Ay;
   glm::vec3 Az;
-  glm::vec3& operator[](size_t idx)
+  glm::vec3 const& operator[](size_t idx) const
   {
     switch (idx)
     {
@@ -101,7 +101,7 @@ protected:
   bool            mIgnoreCollision;
   bool            mIsSelected = false;
   const char*     mName;
-  std::unique_ptr<BoundBoxEdges> mBoundBoxEdges; // optional ? - for selecting we really need this for now!
+  BoundBoxEdges   mBoundBoxEdges; // optional ? - for selecting we really need this for now!
   TextureManager::Texture mTextureEnum{TextureManager::Texture::kInvalid};
 
   // utility function for loading a 2D texture from file

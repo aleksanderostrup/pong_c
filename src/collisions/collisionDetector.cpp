@@ -117,6 +117,81 @@ bool CollisionDetector::DetectCollision(DetectStop const stopWhen, std::vector<O
 
 
 
+// TODO we need to be able to copy "Objects", so we can be const by making copies
+// float CollisionDetector::DetectFirstCollisionTime(DetectStop const stopWhen, std::vector<Object*> objects)
+float CollisionDetector::DetectFirstCollisionTime(float const deltaT, std::vector<Object*> objects)
+{
+  // ! breakdown of algorithm
+  /* 
+    0. UpdatePos(deltaTime);
+    1. find all pairs of objects that collides within deltaT
+    2. from all pairs find the objects that collides first
+    3. return the time when this happens
+  */
+
+  // UpdatePos(deltaT);
+  std::vector<Object*> collidingObjects;
+  return 0;
+
+
+ // LastSeparatingAxis lsa;
+  // bool withinSphere;
+  // std::string concName;
+  // /* 
+  //   OPTIMIZE:
+  //   record the last 2 objects that collided, and start with them for major speed up
+  //   (at least in case we're in scenario: stopWhen = DetectStop::kStopOnFirst)
+  // */
+
+  // for (auto it = objects.begin() ; it != objects.end(); ++it)
+  // {
+
+  //   (*it)->UpdateBoundBox();
+
+  //   // only check all objects that's after the one we're currently checking (to avoid double checks)
+  //   // this also takes care of not counting any collision twice
+  //   for (auto it2 = (it + 1); it2 != objects.end(); ++it2)
+  //   {
+  //     // consider having a separate vector where this is filtered out when added
+  //     if ((*it)->IgnoreCollision() || (*it2)->IgnoreCollision())
+  //     {
+  //       continue;
+  //     }
+
+  //     (*it2)->UpdateBoundBox();
+
+  //     // objects shall have CheckCollision that takes in an object
+  //     if (auto const [collision, C_ij] = CheckCollisionNew(*it, *it2, &lsa, &withinSphere) ; collision )
+  //     {
+  //       if (DetectStop::kStopOnFirst == stopWhen)
+  //       {
+  //         return true;
+  //       }
+  //       concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
+
+  //       std::cout << "Retrieveing ConcName = " << concName << " and normal = " << glm::to_string(_lastSeparatingAxis[concName].normal) << "\n";
+  //       auto colPoint = (*it)->GetCollisionPoint(_lastSeparatingAxis[concName], C_ij.value(), *it2);
+  //       // DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT(colPoint.p_abs, _lastSeparatingAxis[concName].normal);
+        
+  //       (*it)->CalcCollision(*it2, colPoint, _lastSeparatingAxis[concName].normal);
+  //       return true;
+  //     }
+  //     // start tracking last separating axis when inside sphere
+  //     else if (withinSphere)
+  //     {
+  //       concName = std::string((*it)->GetName()) + std::string((*it2)->GetName());
+  //       glm::vec3 tmpPos = (*it)->GetPosition();
+  //       // DEBUGONLY_SET_DEBUGOBJ_TO_COLPOINT2(tmpPos, lsa.normal);
+  //       // DrawDebugObject();
+  //       InsertLSA(concName, lsa);
+  //     }
+      
+  //   }
+  // }
+  // return false;
+}
+
+
 static auto CalcRArrays(glm::mat3 const& C_ij, std::array<glm::vec3, 15> const& L, glm::vec3 const& D, glm::vec3 const& aScale, glm::vec3 const& bScale)
 {
   // a_i and b_i is the length of the edges
@@ -266,12 +341,72 @@ std::pair<bool, std::optional<glm::mat3>> CollisionDetector::CheckCollision(Obje
   // one before fails
   std::array<glm::vec3, 15> L;
   int i = 0;
-  L[i++] = A->mBoundBoxEdges->Ax;
-  L[i++] = A->mBoundBoxEdges->Ay;
-  L[i++] = A->mBoundBoxEdges->Az;
-  L[i++] = B->mBoundBoxEdges->Ax;
-  L[i++] = B->mBoundBoxEdges->Ay;
-  L[i++] = B->mBoundBoxEdges->Az;
+  L[i++] = A->mBoundBoxEdges.Ax;
+  L[i++] = A->mBoundBoxEdges.Ay;
+  L[i++] = A->mBoundBoxEdges.Az;
+  L[i++] = B->mBoundBoxEdges.Ax;
+  L[i++] = B->mBoundBoxEdges.Ay;
+  L[i++] = B->mBoundBoxEdges.Az;
+  const size_t noOfDims = 3; // also offset in L[] to get to the corresponding axis in the B object
+  for (size_t n = 0; n < noOfDims; n++)
+  {
+    for (size_t m = 0; m < noOfDims; m++)
+    {
+      L[i++] = glm::cross(L[n], L[m + noOfDims]);
+    }
+  }
+
+  // calculate c_ij from orthonormal edges [DCD p. 6]
+  // OPTIMIZE: by only calculating c_ij as needed with A_i.dot(B_j)  [DCD p. 6]
+  //  this can done by pre-allocating an array of floats (doubles?) and fill in as needed
+  glm::mat3 const AEdges = glm::mat3(L[0], L[1], L[2]);
+  glm::mat3 const BEdges = glm::mat3(L[3], L[4], L[5]);
+  // matrix access is [col][row]
+  glm::mat3 const C_ij { glm::transpose(AEdges) * BEdges };
+  const size_t noOfTests = 15;
+  // TODO: calculate and then test for each step. if we have a separating axis we can abondon immediately
+  auto const [R0, R1, R] = CalcRArrays(C_ij, L, D, A->mScale, B->mScale);
+
+  // OPTIMIZE: if any of the unit vectors of the 2 objects are aligned
+  //           we do not need to check those axes again!
+  for (size_t n = 0; n < noOfTests; n++)
+  {
+    if (R[n] > (R0[n] + R1[n]))
+    {
+      lsa->normal = L[n];
+      lsa->index = n;
+      return {false, {}};
+    }
+  }
+  
+  return {true, C_ij};
+}
+
+
+std::pair<bool, std::optional<glm::mat3>> CollisionDetector::CheckCollisionNew(Object* A, Object* B, LastSeparatingAxis* lsa, bool* withinSphere) const
+{
+  // skip test if spheres not overlapping
+  glm::vec3 const C0 = { A->GetObjectState().position };  // center of A
+  glm::vec3 const C1 = { B->GetObjectState().position };  // center of B
+  glm::vec3 const D  = { C1 - C0 };             // [DCD p. 6]
+  // if we are not within sphere, abort now
+  if (!(*withinSphere = BoundingSphereOverlaps(*A, *B)))
+  {
+    return {false, {}};
+  }
+  
+  // generate the 15 axis [DCD Table 1, p. 7]
+  // OPTIMIZE: later on, start with the easy ones (non-cross products)
+  // and then generate one at a time and check - no reason to calculate if
+  // one before fails
+  std::array<glm::vec3, 15> L;
+  int i = 0;
+  L[i++] = A->mBoundBoxEdges.Ax;
+  L[i++] = A->mBoundBoxEdges.Ay;
+  L[i++] = A->mBoundBoxEdges.Az;
+  L[i++] = B->mBoundBoxEdges.Ax;
+  L[i++] = B->mBoundBoxEdges.Ay;
+  L[i++] = B->mBoundBoxEdges.Az;
   const size_t noOfDims = 3; // also offset in L[] to get to the corresponding axis in the B object
   for (size_t n = 0; n < noOfDims; n++)
   {

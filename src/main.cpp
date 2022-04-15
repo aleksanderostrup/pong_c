@@ -135,9 +135,9 @@ int main()
     inputProcess.BindKeyToAction(GLFW_KEY_T,     [](Scene& scene){scene.PrintSummedVelAndRot();     });
     inputProcess.BindKeyToAction(GLFW_KEY_UP,    [](Scene& scene){scene.ModifyTime(2.0f);           });
     inputProcess.BindKeyToAction(GLFW_KEY_DOWN,  [](Scene& scene){scene.ModifyTime(0.5f);           });
-    inputProcess.BindKeyToAction(GLFW_KEY_RIGHT, [](Scene& scene){scene.ForceFrameForward(0.0124);  }); 
-    inputProcess.BindKeyToAction(GLFW_KEY_LEFT,  [](Scene& scene){scene.FrameBackward();            }); 
-    inputProcess.BindKeyToAction(GLFW_KEY_R,     [](Scene& scene){scene.ToggleFrameForwardDebug();  }); 
+    inputProcess.BindKeyToAction(GLFW_KEY_RIGHT, [](Scene& scene){scene.ForceFrameForward(0.0124);  });
+    inputProcess.BindKeyToAction(GLFW_KEY_LEFT,  [](Scene& scene){scene.FrameBackward();            });
+    inputProcess.BindKeyToAction(GLFW_KEY_R,     [](Scene& scene){scene.ToggleFrameForwardDebug();  });
 
     // make a bit larger bounding box that is deactivated after a collision (for e.g. 5 frames). and then it is re-activated
     // or just fix cases where we have a FACE-FACE or FACE-EDGE collision -> this seems to be the issue when the rotation is rotated into the 

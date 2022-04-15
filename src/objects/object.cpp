@@ -165,12 +165,9 @@ void Object::printObject()
   modelFormatted = std::regex_replace(modelFormatted, reStart, replStrStart);
 
   std::string boundBoxStr = "\n";
-  if (mBoundBoxEdges)
-  {
-    boundBoxStr += "Ax: " + glm::to_string(mBoundBoxEdges->Ax) + "\n";
-    boundBoxStr += "Ay: " + glm::to_string(mBoundBoxEdges->Ay) + "\n";
-    boundBoxStr += "Az: " + glm::to_string(mBoundBoxEdges->Az) + "\n";
-  }
+  boundBoxStr += "Ax: " + glm::to_string(mBoundBoxEdges.Ax) + "\n";
+  boundBoxStr += "Ay: " + glm::to_string(mBoundBoxEdges.Ay) + "\n";
+  boundBoxStr += "Az: " + glm::to_string(mBoundBoxEdges.Az) + "\n";
 
   std::cout << "name: "             <<  mName                                   << "\n"
             << "position: "         <<  glm::to_string(mState.position)         << "\n"
@@ -220,7 +217,7 @@ void Object::SetDebugInfo(bool on)
 
 glm::vec3 const& Object::GetEdge(uint32_t index) const
 {
-  return (*(mBoundBoxEdges))[index];
+  return mBoundBoxEdges[index];
 }
 
 // private func?
@@ -314,7 +311,7 @@ inline float getPermValue(const glm::vec3& V, const size_t i, const size_t i0)
   return V[getPerm(i, i0)];
 }
 
-inline glm::vec3& getPermValue(BoundBoxEdges& edges, const size_t i, const size_t i0)
+inline glm::vec3 const& getPermValue(BoundBoxEdges const& edges, const size_t i, const size_t i0)
 {
   return edges[getPerm(i, i0)];
 }
@@ -444,8 +441,8 @@ CollisionPoint Object::GetCollisionPoint(LastSeparatingAxis const& lsa, glm::mat
   {
     // CAN BE OPTIMIZED WITH A CONST EXPRESSION FOR ALL CASES -- MAKE ALL INLINE HELPER FUNCTION CONST EXPR
     size_t i, j;
-    BoundBoxEdges& A_edge = *(A->mBoundBoxEdges);
-    BoundBoxEdges& B_edge = *(B->mBoundBoxEdges);
+    BoundBoxEdges const& A_edge = A->mBoundBoxEdges;
+    BoundBoxEdges const& B_edge = B->mBoundBoxEdges;
     getijFromIndex(lsa.index, i, j);
     std::cout << "Before: Collision point rel: "<< glm::to_string(colPoint.x_rel) << std::endl;
     std::cout << "Before: Collision point abs: "<< glm::to_string(colPoint.p_abs) << std::endl;
@@ -565,115 +562,6 @@ static auto CalcRArrays(glm::mat3 const& C_ij, std::array<glm::vec3, 15> const& 
   return std::tuple( R0, R1, R );
 }
 
-
-/* 
-  notes on coordinate system
-  The camera points along the z-axis (moving forward in the beginning is going to NEGATIVE z).
-  This means that the horizontal (ground) plane is the xz-plane. Looking from "below" we see the following:
-
-              (top14)____________(top13)
-  z+       y+    /               /|
-  ^        ^    /               / |
-  |       /    /               /  |
-  |      /(bot14)__________(bot13)|
-  |     /    |         c0     |   /
-  |    /     |          |_____|_ /
-  |   /      |         /      | /
-  |  /       |        /       |/
-  | /     (bot11)____/_____(bot12)
-  |/
-  +- - - - - - - - - - - - - - - - - -> x+
-
-  from the top it looks like this (notice the negative z axis).
-  so the convention is that:
-  top/bot11 is the lowest z and lowest x. in this way the bot / top xx is mirrored for all xx.
-  note that this is before any rotation of the coordinates!
-  
-  z-
-  ^
-  |
-  |      (top11) -------- (top12)
-  |          |               |
-  |          |               |
-  |          |               |
-  |          |               |
-  |      (top14) -------- (top13)
-  |
-  +- - - - - - - - - - - - - - - - - - > x+
-
-  the collision will use the algorithm (and naming!) described here:
-  https://www.geometrictools.com/Documentation/DynamicCollisionDetection.pdf [DCD]
-  it is also in the docs/ folder (at the project root dir). Doc will be referenced below.
-*/
-std::pair<bool, std::optional<glm::mat3>> Object::CheckCollision(Object* obj, LastSeparatingAxis* lsa, bool* withinSphere)
-{
-  Object* A = this; // alias to help with the naming
-  Object* B = obj;  // alias to help with the naming
-  
-  // skip test if spheres not overlapping
-  float const minR = std::pow(A->ContainingRadius() + B->ContainingRadius(), 2);
-  glm::vec3 const C0 = { A->mState.position };  // center of A
-  glm::vec3 const C1 = { B->mState.position };  // center of B
-  glm::vec3 const D  = { C1 - C0 };             // [DCD p. 6]
-  float const actualR = glm::dot(D, D);         // by convention we do not divide by 4 in these calcs to speed up computation
-  // if we are not within sphere, abort now
-  if (!(*withinSphere = (actualR <= minR)))
-  {
-    return {false, {}};
-  }
-
-  // TODO: factor out these calls (can they be done before this). Then make this function const
-  // check that BoundBox is not null here
-  A->UpdateBoundBox();
-  B->UpdateBoundBox();
-  
-  // generate the 15 axis [DCD Table 1, p. 7]
-  // OPTIMIZE: later on, start with the easy ones (non-cross products)
-  // and then generate one at a time and check - no reason to calculate if
-  // one before fails
-  std::array<glm::vec3, 15> L;
-  int i = 0;
-  L[i++] = A->mBoundBoxEdges->Ax;
-  L[i++] = A->mBoundBoxEdges->Ay;
-  L[i++] = A->mBoundBoxEdges->Az;
-  L[i++] = B->mBoundBoxEdges->Ax;
-  L[i++] = B->mBoundBoxEdges->Ay;
-  L[i++] = B->mBoundBoxEdges->Az;
-  const size_t noOfDims = 3; // also offset in L[] to get to the corresponding axis in the B object
-  for (size_t n = 0; n < noOfDims; n++)
-  {
-    for (size_t m = 0; m < noOfDims; m++)
-    {
-      L[i++] = glm::cross(L[n], L[m + noOfDims]);
-    }
-  }
-
-  // calculate c_ij from orthonormal edges [DCD p. 6]
-  // OPTIMIZE: by only calculating c_ij as needed with A_i.dot(B_j)  [DCD p. 6]
-  //  this can done by pre-allocating an array of floats (doubles?) and fill in as needed
-  glm::mat3 const AEdges = glm::mat3(L[0], L[1], L[2]);
-  glm::mat3 const BEdges = glm::mat3(L[3], L[4], L[5]);
-  // matrix access is [col][row]
-  glm::mat3 const C_ij { glm::transpose(AEdges) * BEdges };
-  const size_t noOfTests = 15;
-  // TODO: calculate and then test for each step. if we have a separating axis we can abondon immediately
-  auto const [R0, R1, R] = CalcRArrays(C_ij, L, D, A->mScale, B->mScale);
-
-  // OPTIMIZE: if any of the unit vectors of the 2 objects are aligned
-  //           we do not need to check those axes again!
-  for (size_t n = 0; n < noOfTests; n++)
-  {
-    if (R[n] > (R0[n] + R1[n]))
-    {
-      lsa->normal = L[n];
-      lsa->index = n;
-      return {false, {}};
-    }
-  }
-  
-  return {true, C_ij};
-}
-
 void Object::CalcCollision(Object* obj, CollisionPoint& colPoint, glm::vec3& normal)
 {
   double e = 1.0; // coefficient of restitution. Max 1 (perfect elastic). Min 0 (all kinetic energi lost as heat or deformation) 
@@ -759,7 +647,7 @@ bool Object::CheckRayVsBoxCollision(glm::vec3 const& pRay, glm::vec3 const& dRay
   float APmCdU[3];
   // notation from https://www.geometrictools.com/Documentation/IntersectionLineBox.pdf
   glm::vec3 a_i     = 0.5f * mScale; // extent
-  BoundBoxEdges& U = *mBoundBoxEdges;
+  BoundBoxEdges& U = mBoundBoxEdges;
   
   // The ray = specific tests .
   for ( int i = 0 ; i < 3 ; ++i )
